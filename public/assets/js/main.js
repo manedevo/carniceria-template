@@ -206,7 +206,7 @@ function renderProducts(products) {
 
   grid.innerHTML = products.map(p => {
     const imgStyle = p.image_url
-      ? `background-image: url('/assets/img/${escHtml(p.image_url)}');`
+      ? `background-image: url('/assets/img_realistas/${escHtml(p.image_url)}');`
       : '';
 
     return `

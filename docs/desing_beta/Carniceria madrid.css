@@ -1,0 +1,199 @@
+/* VARIABLES MADRID MODERN STYLE */
+:root {
+  --madrid-dark: #121212;
+  --madrid-gold: #c5a059; /* Oro viejo / Latón */
+  --madrid-white: #f8f5f0; /* Blanco hueso */
+  --madrid-gray: #2a2a2a;
+  --text-dim: #888;
+  --font-title: 'Cormorant Garamond', serif;
+  --font-body: 'Montserrat', sans-serif;
+  --transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background-color: var(--madrid-white);
+  color: var(--madrid-dark);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* HEADER MINIMALISTA */
+.madrid-header {
+  background: white;
+  padding: 1.5rem 0;
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  border-bottom: 2px solid var(--madrid-dark);
+}
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4rem;
+}
+.logo h1 {
+  font-family: var(--font-title);
+  font-size: 1.8rem;
+  letter-spacing: 5px;
+  font-weight: 600;
+}
+.logo span {
+  font-size: 0.6rem;
+  letter-spacing: 3px;
+  color: var(--madrid-gold);
+  font-weight: 800;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--madrid-dark);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 2px;
+  margin-left: 2.5rem;
+  transition: var(--transition);
+}
+.nav-links a:hover { color: var(--madrid-gold); }
+
+/* HERO SECCIÓN MADRID */
+.hero-madrid {
+  height: 80vh;
+  display: flex;
+  align-items: center;
+  padding: 0 10%;
+  background-color: var(--madrid-dark);
+  color: white;
+  position: relative;
+  overflow: hidden;
+}
+.hero-text-box { max-width: 600px; z-index: 2; }
+.pre-title { color: var(--madrid-gold); font-size: 0.8rem; letter-spacing: 4px; font-weight: 700; margin-bottom: 1rem; display: block; }
+.hero-title { font-family: var(--font-title); font-size: 5rem; line-height: 0.9; margin-bottom: 2rem; font-style: italic; }
+.hero-title em { font-style: normal; color: var(--madrid-gold); }
+
+.btn-madrid {
+  background: var(--madrid-gold);
+  color: white;
+  border: none;
+  padding: 1.2rem 2.5rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: var(--transition);
+}
+.btn-madrid:hover { filter: brightness(1.1); transform: scale(1.05); }
+
+/* CATÁLOGO ESTILO GALERÍA */
+.section { padding: 100px 5%; max-width: 1400px; margin: 0 auto; }
+.section-heading { text-align: center; margin-bottom: 4rem; }
+.section-heading .title { font-family: var(--font-title); font-size: 3rem; }
+.divider { width: 50px; height: 3px; background: var(--madrid-gold); margin: 1rem auto; }
+
+.market-toolbar { display: flex; justify-content: space-between; margin-bottom: 3rem; align-items: center; }
+.filters { display: flex; gap: 1rem; }
+.filter-btn {
+  background: white;
+  border: 1px solid #ddd;
+  padding: 0.6rem 1.5rem;
+  cursor: pointer;
+  font-size: 0.7rem;
+  font-weight: 700;
+  transition: var(--transition);
+}
+.filter-btn.active { background: var(--madrid-dark); color: white; border-color: var(--madrid-dark); }
+
+.search-wrapper input {
+  border: none;
+  border-bottom: 2px solid var(--madrid-dark);
+  padding: 0.5rem;
+  width: 300px;
+  font-family: inherit;
+  background: transparent;
+}
+
+/* PRODUCT CARD MODERNA */
+.products-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 3rem; }
+.product-card { background: white; transition: var(--transition); position: relative; }
+.product-image {
+  height: 350px;
+  background-size: cover;
+  background-position: center;
+  margin-bottom: 1.5rem;
+  filter: grayscale(0.2);
+  transition: var(--transition);
+}
+.product-card:hover .product-image { filter: grayscale(0); transform: scale(1.02); }
+
+.product-name { font-family: var(--font-title); font-size: 1.8rem; font-weight: 600; }
+.product-price { color: var(--madrid-gold); font-weight: 800; font-size: 1.1rem; margin-top: 0.5rem; }
+.product-actions { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; }
+.qty-input { padding: 0.5rem; width: 50px; border: 1px solid #eee; }
+
+/* CHECKOUT ESTILO BOUTIQUE */
+.section-light { background: #f0f0f0; padding: 80px 0; }
+.checkout-container { max-width: 900px; margin: 0 auto; background: white; padding: 4rem; border: 1px solid #eee; }
+.grid-form { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
+.field.span-2 { grid-column: span 2; }
+.field label { display: block; font-size: 0.65rem; font-weight: 800; letter-spacing: 1px; margin-bottom: 0.5rem; text-transform: uppercase; }
+.field input, .field select, .field textarea { width: 100%; padding: 1rem; border: 1px solid #eee; background: #fafafa; font-family: inherit; }
+
+.btn-confirm {
+  width: 100%;
+  margin-top: 3rem;
+  background: var(--madrid-dark);
+  color: white;
+  padding: 1.5rem;
+  font-weight: 800;
+  border: none;
+  cursor: pointer;
+  letter-spacing: 3px;
+}
+
+/* CARRITO FLOTANTE */
+.cart-trigger {
+  position: fixed;
+  bottom: 40px;
+  right: 40px;
+  background: var(--madrid-dark);
+  color: white;
+  padding: 1.5rem;
+  z-index: 999;
+  cursor: pointer;
+}
+.cart-label { font-size: 0.6rem; letter-spacing: 2px; display: block; opacity: 0.7; }
+.cart-total { font-weight: 800; font-size: 1.5rem; }
+
+/* PANEL CARRITO */
+.side-cart {
+  position: fixed;
+  top: 0;
+  right: -500px;
+  width: 500px;
+  height: 100%;
+  background: white;
+  z-index: 1001;
+  box-shadow: -20px 0 50px rgba(0,0,0,0.1);
+  transition: var(--transition);
+  display: flex;
+  flex-direction: column;
+}
+.side-cart.open { right: 0; }
+.side-cart-header { padding: 2rem; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; }
+.side-cart-body { flex: 1; padding: 2rem; overflow-y: auto; }
+.side-cart-footer { padding: 2rem; background: #fafafa; }
+.total-box { display: flex; justify-content: space-between; font-weight: 800; font-size: 1.2rem; margin-bottom: 2rem; }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .container { padding: 0 1.5rem; }
+  .nav-links { display: none; }
+  .hero-title { font-size: 3rem; }
+  .side-cart { width: 100%; right: -100%; }
+  .grid-form { grid-template-columns: 1fr; }
+  .field.span-2 { grid-column: span 1; }
+  .checkout-container { padding: 2rem; }
+}

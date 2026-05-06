@@ -43,11 +43,48 @@ function updateCartBadge() {
   document.getElementById('cartCount').textContent = cartItemCount();
 }
 
-function renderCartList(listEl, totalEl) {
-  listEl.innerHTML = '';
+function renderCartPanel() {
+  const body = document.getElementById('cartItems');
+  const subtotalEl = document.getElementById('cartSubtotal');
+
+  body.innerHTML = '';
 
   if (cart.size === 0) {
-    listEl.innerHTML = '<li class="cart-empty">Aún no has añadido productos.</li>';
+    body.innerHTML = '<p class="cart-empty-msg">Tu selección está vacía.</p>';
+    subtotalEl.textContent = formatEur(0);
+    return;
+  }
+
+  cart.forEach((item, id) => {
+    const div = document.createElement('div');
+    div.className = 'cart-item-row';
+    div.innerHTML = `
+      <div style="flex:1">
+        <p class="cart-item-name">${escHtml(item.name)}</p>
+        <p class="cart-item-sub">${formatEur(item.price)}/kg</p>
+      </div>
+      <div class="qty-control">
+        <button class="qty-btn" data-id="${escHtml(String(id))}" data-action="dec" aria-label="Reducir">−</button>
+        <span class="qty-value">${item.qty}</span>
+        <button class="qty-btn" data-id="${escHtml(String(id))}" data-action="inc" aria-label="Aumentar">+</button>
+      </div>
+      <span class="cart-item-price">${formatEur(item.price * item.qty)}</span>
+      <button class="cart-item-remove" data-id="${escHtml(String(id))}" aria-label="Eliminar">✕</button>`;
+    body.appendChild(div);
+  });
+
+  subtotalEl.textContent = formatEur(cartTotal());
+}
+
+function renderCartInline() {
+  const list = document.getElementById('cartInlineList');
+  const totalEl = document.getElementById('cartInlineTotal');
+  if (!list) return;
+
+  list.innerHTML = '';
+
+  if (cart.size === 0) {
+    list.innerHTML = '<li class="cart-inline-empty">Aún no has añadido productos.</li>';
     totalEl.textContent = formatEur(0);
     return;
   }
@@ -56,19 +93,19 @@ function renderCartList(listEl, totalEl) {
     const li = document.createElement('li');
     li.innerHTML = `
       <div class="cart-item-row">
-        <div>
+        <div style="flex:1">
           <p class="cart-item-name">${escHtml(item.name)}</p>
           <p class="cart-item-sub">${formatEur(item.price)}/kg</p>
         </div>
         <div class="qty-control">
-          <button class="qty-btn" data-id="${escHtml(String(id))}" data-action="dec" aria-label="Reducir cantidad">−</button>
+          <button class="qty-btn" data-id="${escHtml(String(id))}" data-action="dec" aria-label="Reducir">−</button>
           <span class="qty-value">${item.qty}</span>
-          <button class="qty-btn" data-id="${escHtml(String(id))}" data-action="inc" aria-label="Aumentar cantidad">+</button>
+          <button class="qty-btn" data-id="${escHtml(String(id))}" data-action="inc" aria-label="Aumentar">+</button>
         </div>
         <span class="cart-item-price">${formatEur(item.price * item.qty)}</span>
-        <button class="cart-item-remove" data-id="${escHtml(String(id))}" aria-label="Eliminar producto">✕</button>
+        <button class="cart-item-remove" data-id="${escHtml(String(id))}" aria-label="Eliminar">✕</button>
       </div>`;
-    listEl.appendChild(li);
+    list.appendChild(li);
   });
 
   totalEl.textContent = formatEur(cartTotal());
@@ -76,18 +113,8 @@ function renderCartList(listEl, totalEl) {
 
 function refreshAllCartUIs() {
   updateCartBadge();
-
-  // Sidebar in form section
-  renderCartList(
-    document.getElementById('cartList'),
-    document.getElementById('cartTotal')
-  );
-
-  // Modal
-  renderCartList(
-    document.getElementById('modalCartList'),
-    document.getElementById('modalCartTotal')
-  );
+  renderCartPanel();
+  renderCartInline();
 }
 
 function handleCartAction(e) {
@@ -111,9 +138,23 @@ function handleCartAction(e) {
   refreshAllCartUIs();
 }
 
+// ── Side cart panel ───────────────────────────────────────────────────────────
+
+function openCart() {
+  refreshAllCartUIs();
+  document.getElementById('cartPanel').classList.add('open');
+  document.getElementById('cartOverlay').classList.add('visible');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeCart() {
+  document.getElementById('cartPanel').classList.remove('open');
+  document.getElementById('cartOverlay').classList.remove('visible');
+  document.body.style.overflow = '';
+}
+
 // ── Products ──────────────────────────────────────────────────────────────────
 
-let allProducts = [];
 let activeCategory = 'Todos';
 
 async function loadCategories() {
@@ -127,7 +168,7 @@ async function loadCategories() {
       const btn = document.createElement('button');
       btn.className = 'filter-btn';
       btn.dataset.category = cat;
-      btn.textContent = cat;
+      btn.textContent = cat.toUpperCase();
       btn.setAttribute('role', 'tab');
       btn.setAttribute('aria-selected', 'false');
       bar.appendChild(btn);
@@ -139,7 +180,7 @@ async function loadCategories() {
 
 async function loadProducts(category, search) {
   const grid = document.getElementById('productGrid');
-  grid.innerHTML = '<p class="loading-msg">Cargando…</p>';
+  grid.innerHTML = '<div class="loading-state">Actualizando existencias del día...</div>';
 
   try {
     const params = new URLSearchParams();
@@ -148,10 +189,10 @@ async function loadProducts(category, search) {
 
     const res = await fetch(`/api/products?${params}`);
     if (!res.ok) throw new Error('products');
-    allProducts = await res.json();
-    renderProducts(allProducts);
+    const products = await res.json();
+    renderProducts(products);
   } catch {
-    grid.innerHTML = '<p class="loading-msg">No se pudieron cargar los productos. Inténtalo de nuevo.</p>';
+    grid.innerHTML = '<div class="loading-state">No se pudieron cargar los productos. Inténtalo de nuevo.</div>';
   }
 }
 
@@ -159,19 +200,20 @@ function renderProducts(products) {
   const grid = document.getElementById('productGrid');
 
   if (products.length === 0) {
-    grid.innerHTML = '<p class="loading-msg">No se encontraron productos.</p>';
+    grid.innerHTML = '<div class="loading-state">No se encontraron productos.</div>';
     return;
   }
 
   grid.innerHTML = products.map(p => {
-    const bgStyle = p.image_url
-      ? `background-image: url('/assets/img/${escHtml(p.image_url)}'); background-size: cover; background-position: center;`
-      : `background-color: var(--clr-warm);`;
+    const imgStyle = p.image_url
+      ? `background-image: url('/assets/img/${escHtml(p.image_url)}');`
+      : '';
 
     return `
       <article class="product-card" data-id="${p.id}">
-        <div class="product-img" style="${bgStyle}" role="img" aria-label="${escHtml(p.name)}"></div>
+        <div class="product-img" style="${imgStyle}" role="img" aria-label="${escHtml(p.name)}"></div>
         <div class="product-body">
+          <p class="product-category">${escHtml(p.category || '')}</p>
           <p class="product-name">${escHtml(p.name)}</p>
           <p class="product-note">${escHtml(p.note || '')}</p>
           <div class="product-footer">
@@ -208,18 +250,16 @@ function handleAddToCart(e) {
 
 async function submitOrder(e) {
   e.preventDefault();
-  const form = e.target;
 
   if (cart.size === 0) {
     showToast('Añade al menos un producto antes de confirmar.', 3500);
     return;
   }
 
-  // Basic validation
   const required = ['custName', 'custPhone', 'custAddress', 'custZone', 'custSlot'];
   let valid = true;
-  required.forEach(id => {
-    const el = document.getElementById(id);
+  required.forEach(fieldId => {
+    const el = document.getElementById(fieldId);
     if (!el.value.trim()) {
       el.classList.add('invalid');
       valid = false;
@@ -235,7 +275,7 @@ async function submitOrder(e) {
 
   const btn = document.getElementById('submitBtn');
   btn.disabled = true;
-  btn.textContent = 'Enviando…';
+  btn.textContent = 'ENVIANDO...';
 
   const items = [];
   cart.forEach((item, id) => {
@@ -252,6 +292,8 @@ async function submitOrder(e) {
     items,
   };
 
+  const msgEl = document.getElementById('orderMessage');
+
   try {
     const res = await fetch('/api/orders', {
       method:  'POST',
@@ -260,43 +302,34 @@ async function submitOrder(e) {
     });
 
     const data = await res.json();
-
     if (!res.ok) throw new Error(data.error || 'Error desconocido');
 
     cart.clear();
     refreshAllCartUIs();
-    form.reset();
+    e.target.reset();
+    msgEl.textContent = '¡Pedido recibido! Te contactamos en breve para confirmar.';
     showToast('¡Pedido recibido! Te llamamos en breve para confirmar.', 5000);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   } catch (err) {
+    msgEl.textContent = `Error: ${err.message}`;
     showToast(`Error al enviar el pedido: ${err.message}`, 5000);
   } finally {
     btn.disabled = false;
-    btn.textContent = 'Confirmar pedido';
+    btn.textContent = 'CONFIRMAR PEDIDO';
   }
-}
-
-// ── Modal ─────────────────────────────────────────────────────────────────────
-
-function openCart() {
-  refreshAllCartUIs();
-  const modal = document.getElementById('cartModal');
-  modal.hidden = false;
-  document.body.style.overflow = 'hidden';
-}
-
-function closeCart() {
-  document.getElementById('cartModal').hidden = true;
-  document.body.style.overflow = '';
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Año en footer
+  const yearEl = document.getElementById('year');
+  if (yearEl) yearEl.textContent = new Date().getFullYear();
+
   await loadCategories();
   await loadProducts('Todos', '');
 
-  // Category filter
+  // Filtros de categoría
   document.getElementById('filterBar').addEventListener('click', e => {
     const btn = e.target.closest('.filter-btn');
     if (!btn) return;
@@ -311,7 +344,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     loadProducts(activeCategory, document.getElementById('searchInput').value.trim());
   });
 
-  // Search (debounced)
+  // Búsqueda con debounce
   let searchTimer;
   document.getElementById('searchInput').addEventListener('input', e => {
     clearTimeout(searchTimer);
@@ -320,30 +353,38 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 320);
   });
 
-  // Add to cart (event delegation)
+  // Añadir al carrito (delegación de eventos)
   document.getElementById('productGrid').addEventListener('click', handleAddToCart);
 
-  // Cart qty controls (sidebar + modal)
-  document.getElementById('cartList').addEventListener('click', handleCartAction);
-  document.getElementById('modalCartList').addEventListener('click', handleCartAction);
+  // Controles de cantidad — panel lateral
+  document.getElementById('cartItems').addEventListener('click', handleCartAction);
 
-  // Cart modal
+  // Controles de cantidad — resumen en formulario
+  document.getElementById('cartInlineList').addEventListener('click', handleCartAction);
+
+  // Abrir/cerrar carrito
   document.getElementById('cartBtn').addEventListener('click', openCart);
-  document.getElementById('cartModalClose').addEventListener('click', closeCart);
-  document.getElementById('cartModal').addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeCart();
+  document.getElementById('cartClose').addEventListener('click', closeCart);
+  document.getElementById('cartOverlay').addEventListener('click', closeCart);
+
+  // Limpiar carrito
+  document.getElementById('clearCartBtn').addEventListener('click', () => {
+    cart.clear();
+    refreshAllCartUIs();
   });
+
+  // Ir al formulario y cerrar panel
   document.getElementById('goToOrderBtn').addEventListener('click', closeCart);
 
-  // Order form
+  // Formulario de pedido
   document.getElementById('orderForm').addEventListener('submit', submitOrder);
 
-  // Remove invalid class on input
+  // Quitar clase invalid al escribir
   document.getElementById('orderForm').addEventListener('input', e => {
     e.target.classList.remove('invalid');
   });
 
-  // Escape closes modal
+  // Escape cierra el panel
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeCart();
   });

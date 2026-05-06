@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>La Arroba Madrid - Boutique de Carnes</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Montserrat:wght@300;500;800&display=swap');</style>
+  <link rel="stylesheet" href="/assets/css/main.css" />
+</head>
+<body>
+  
+  <header class="madrid-header">
+    <div class="container">
+      <div class="brand-box">
+        <div class="logo" id="logo">
+          <h1>LA ARROBA</h1>
+          <span>MADRID • DESDE 2026</span>
+        </div>
+      </div>
+      <nav class="nav-links">
+        <a href="#catalogo">EL MERCADO</a>
+        <a href="#checkout">PEDIDOS</a>
+        <a href="#sobre">HERENCIA</a>
+        <a href="#contacto">UBICACIÓN</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero-madrid">
+    <div class="hero-text-box">
+      <span class="pre-title">EXPERIENCIA GOURMET EN CHAMARTÍN</span>
+      <h2 class="hero-title">Del Campo a la<br><em>Capital</em></h2>
+      <p>Selección de razas autóctonas y maduraciones dry-aged. Calidad artesanal con la eficiencia de Madrid.</p>
+      <div class="hero-cta">
+        <button class="btn-madrid" onclick="App.scrollTo('catalogo')">EXPLORAR CORTES</button>
+      </div>
+    </div>
+    <div class="hero-decoration">
+      <div class="circle-stamp">CALIDAD CERTIFICADA</div>
+    </div>
+  </section>
+
+  <main class="main-container">
+    <section id="catalogo" class="section">
+      <div class="section-heading">
+        <span class="sub">Nuestra Vitrina</span>
+        <h3 class="title">CORTES DE AUTOR</h3>
+        <div class="divider"></div>
+      </div>
+
+      <div class="market-toolbar">
+        <div class="filters" id="filters">
+          </div>
+        <div class="search-wrapper">
+          <input type="text" id="searchInput" placeholder="Buscar por pieza o corte..." />
+        </div>
+      </div>
+
+      <div class="products-grid" id="productsGrid">
+        <div class="loading-state">Actualizando existencias del día...</div>
+      </div>
+    </section>
+
+    <section id="checkout" class="section-light">
+      <div class="checkout-container">
+        <div class="checkout-header">
+          <h3>DATOS DE ENTREGA</h3>
+          <p>Envío express en Madrid Central y alrededores.</p>
+        </div>
+        
+        <div class="grid-form">
+          <div class="field">
+            <label>Nombre Completo</label>
+            <input type="text" id="name" placeholder="Ej: Alberto García" />
+          </div>
+          <div class="field">
+            <label>WhatsApp de Contacto</label>
+            <input type="tel" id="phone" placeholder="+34 600 000 000" />
+          </div>
+          <div class="field span-2">
+            <label>Dirección de Envío</label>
+            <textarea id="address" rows="2" placeholder="Calle, portal, piso..."></textarea>
+          </div>
+          <div class="field">
+            <label>Zona de Madrid</label>
+            <select id="zone">
+              <option value="">Seleccionar Barrio</option>
+              <option>Chamartín / Salamanca</option>
+              <option>Chamberí / Centro</option>
+              <option>Retiro / Arganzuela</option>
+              <option>Otras zonas (M-30/M-40)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Franja de Entrega</label>
+            <select id="slot">
+              <option value="">Seleccionar horario</option>
+              <option>Mañana (9:00 - 12:00)</option>
+              <option>Mediodía (12:00 - 15:00)</option>
+              <option>Tarde (15:00 - 18:00)</option>
+            </select>
+          </div>
+          <div class="field span-2">
+            <label>Método de Pago</label>
+            <select id="payment">
+              <option>Tarjeta / Datáfono (en entrega)</option>
+              <option>Bizum</option>
+              <option>Efectivo</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="checkout-action">
+          <button class="btn-confirm" onclick="App.submitOrder()">CONFIRMAR PEDIDO</button>
+          <p id="orderMessage" class="feedback"></p>
+        </div>
+      </div>
+    </section>
+
+    <section id="sobre" class="section heritage">
+      <div class="heritage-grid">
+        <div class="heritage-img"></div>
+        <div class="heritage-content">
+          <h4>TRADICIÓN MADRILEÑA</h4>
+          <p>En La Arroba Madrid, entendemos la carne como una pieza de arte. Seleccionamos proveedores que respetan el bienestar animal y los ciclos naturales.</p>
+          <p>Desde nuestro obrador en el corazón de la capital, preparamos cada pedido al momento, garantizando la cadena de frío y el corte perfecto.</p>
+        </div>
+      </div>
+    </section>
+
+    <section id="contacto" class="contact-footer">
+      <div class="contact-card">
+        <div class="item">
+          <strong>VISÍTANOS</strong>
+          <p>Mercado de Chamartín, Madrid</p>
+        </div>
+        <div class="item">
+          <strong>WHATSAPP</strong>
+          <p>+34 600 123 456</p>
+        </div>
+        <div class="item">
+          <strong>IG</strong>
+          <p>@laarrobamadrid</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div class="cart-trigger" onclick="App.toggleCart()">
+    <div class="cart-info">
+      <span class="cart-label">CARRITO</span>
+      <span class="cart-total" id="cartCount">0</span>
+    </div>
+  </div>
+
+  <aside class="side-cart" id="cartPanel">
+    <div class="side-cart-header">
+      <h4>TU SELECCIÓN</h4>
+      <button class="close-btn" onclick="App.toggleCart()">CERRAR</button>
+    </div>
+    <div class="side-cart-body" id="cartItems"></div>
+    <div class="side-cart-footer">
+      <div class="total-box">
+        <span>TOTAL:</span>
+        <span id="cartSubtotal">0.00 €</span>
+      </div>
+      <div class="actions">
+        <button class="btn-outline" onclick="App.clearCart()">LIMPIAR</button>
+        <button class="btn-fill" onclick="App.scrollTo('checkout'); App.toggleCart();">FINALIZAR</button>
+      </div>
+    </div>
+  </aside>
+
+  <footer class="footer-legal">
+    <p>© <span id="year"></span> LA ARROBA MADRID S.L. · CORTES EXCLUSIVOS · MADRID, ESPAÑA</p>
+  </footer>
+
+  <script src="/assets/js/main.js"></script>
+</body>
+</html>

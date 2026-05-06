@@ -1,0 +1,4 @@
+# Add your product images here.
+# Naming convention: NN_descriptive-name.png (e.g. 01_pork-chop.png)
+# Images are served at /assets/img/FILENAME
+# Update the image_url column in the database to match your filenames.

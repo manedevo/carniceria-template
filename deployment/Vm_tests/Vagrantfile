@@ -1,0 +1,117 @@
+# Vagrantfile — Carnicería Artesanal local test VM
+# Prerequisites: VirtualBox + Vagrant
+# Usage:
+#   cd deployment/Vm_tests
+#   vagrant up            # first boot (15-20 min)
+#   vagrant ssh           # open a shell
+#   vagrant halt          # stop VM
+#   vagrant destroy -f    # delete VM
+
+REPO_URL  = "https://github.com/manedevo/carniceria-template.git"
+INSTALL   = "/opt/carniceria-template"
+VM_MEMORY = 2048
+VM_CPUS   = 2
+APP_PORT  = 3000   # forwarded to host as 8080
+
+Vagrant.configure("2") do |config|
+
+  config.vm.box              = "ubuntu/jammy64"   # Ubuntu 22.04 LTS
+  config.vm.box_check_update = false
+
+  config.vm.network "forwarded_port",
+    guest: APP_PORT, host: 8080, host_ip: "127.0.0.1", auto_correct: true
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.name   = "carniceria-artesanal"
+    vb.memory = VM_MEMORY
+    vb.cpus   = VM_CPUS
+    vb.gui    = false
+    vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+  end
+
+  config.vm.provision "shell", inline: <<-SHELL
+    set -euo pipefail
+
+    # ── 1. Locale & timezone ────────────────────────────────────────────────
+    locale-gen en_US.UTF-8
+    update-locale LANG=en_US.UTF-8
+    timedatectl set-timezone Europe/Madrid
+
+    # ── 2. System update ────────────────────────────────────────────────────
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update -q
+    apt-get upgrade -yq
+
+    # ── 3. Base packages ────────────────────────────────────────────────────
+    apt-get install -yq git curl openssl ca-certificates gnupg lsb-release
+
+    # ── 4. Docker Engine (official repo) ────────────────────────────────────
+    install -m 0755 -d /etc/apt/keyrings
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg \
+      | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+    chmod a+r /etc/apt/keyrings/docker.gpg
+
+    echo \
+      "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] \
+      https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" \
+      > /etc/apt/sources.list.d/docker.list
+
+    apt-get update -q
+    apt-get install -yq docker-ce docker-ce-cli containerd.io \
+      docker-buildx-plugin docker-compose-plugin
+
+    systemctl enable --now docker
+
+    # ── 5. Add vagrant user to docker group ─────────────────────────────────
+    usermod -aG docker vagrant
+
+    # ── 6. Clone or update repository ───────────────────────────────────────
+    if [[ -d "#{INSTALL}/.git" ]]; then
+      cd "#{INSTALL}"
+      git fetch origin
+      git reset --hard origin/main
+    else
+      git clone "#{REPO_URL}" "#{INSTALL}"
+    fi
+
+    # ── 7. Generate .env ────────────────────────────────────────────────────
+    ENV_FILE="#{INSTALL}/.env"
+    if [[ ! -f "${ENV_FILE}" ]]; then
+      DB_PASS=$(openssl rand -hex 20)
+      cat > "${ENV_FILE}" <<EOF
+DB_HOST=db
+DB_PORT=3306
+DB_USER=carniceria
+DB_PASSWORD=${DB_PASS}
+DB_NAME=carniceria_db
+PORT=3000
+NODE_ENV=production
+EOF
+      chmod 600 "${ENV_FILE}"
+    fi
+
+    # ── 8. Start containers ─────────────────────────────────────────────────
+    cd "#{INSTALL}"
+    docker compose pull --quiet
+    docker compose up -d --build
+
+    # ── 9. Wait for healthy state ────────────────────────────────────────────
+    echo "Waiting for app to become healthy…"
+    for i in $(seq 1 30); do
+      STATUS=$(docker inspect --format='{{.State.Health.Status}}' \
+        $(docker compose ps -q app 2>/dev/null) 2>/dev/null || echo "")
+      [[ "${STATUS}" == "healthy" ]] && break
+      sleep 4
+    done
+
+    # ── 10. Summary ──────────────────────────────────────────────────────────
+    echo ""
+    echo "════════════════════════════════════════════"
+    echo "  Carnicería Artesanal — VM ready!"
+    echo "  Open on your host: http://localhost:8080"
+    echo "════════════════════════════════════════════"
+    echo ""
+    docker compose -f "#{INSTALL}/docker-compose.yml" ps
+  SHELL
+
+end

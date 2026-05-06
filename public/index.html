@@ -3,212 +3,206 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="Carnicería Artesanal — Carne fresca de calidad en Madrid. Pedidos a domicilio." />
+  <meta name="description" content="Carnicería Artesanal — Cortes premium a domicilio en Madrid. Carne fresca seleccionada a mano." />
   <title>Carnicería Artesanal · Madrid</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');</style>
   <link rel="stylesheet" href="/assets/css/main.css" />
 </head>
 <body>
 
 <!-- ── Header ───────────────────────────────────────────────────────────────── -->
-<header class="site-header">
-  <div class="header-inner container">
+<header class="main-header">
+  <div class="header-container">
     <div class="logo">
-      <span class="logo-icon">🥩</span>
-      <div>
-        <h1 class="logo-name">Carnicería Artesanal</h1>
-        <p class="logo-tagline">Madrid · Desde 1987</p>
-      </div>
+      <span class="logo-small">MADRID</span>
+      <span class="logo-main">CARNICERÍA</span>
+      <span class="logo-brand">ARTESANAL · EST. 1987</span>
     </div>
-    <nav class="header-nav">
-      <a href="#catalogo">Catálogo</a>
-      <a href="#pedido">Pedir ahora</a>
-      <a href="#nosotros">Nosotros</a>
+    <nav class="nav-menu">
+      <a href="#catalogo">NUESTROS CORTES</a>
+      <a href="#checkout">PEDIDO</a>
+      <a href="#sobre">NOSOTROS</a>
+      <a href="#contacto">CONTACTO</a>
     </nav>
-    <button class="cart-btn" id="cartBtn" aria-label="Ver carrito">
-      🛒 <span class="cart-count" id="cartCount">0</span>
-    </button>
   </div>
 </header>
 
 <!-- ── Hero ─────────────────────────────────────────────────────────────────── -->
 <section class="hero">
-  <div class="hero-content container">
-    <p class="hero-kicker">Carne fresca. Trato cercano.</p>
-    <h2 class="hero-title">Del campo a tu mesa,<br />con honestidad</h2>
-    <p class="hero-sub">Seleccionamos cada pieza a mano. Sin intermediarios. Reparto a domicilio en Madrid y zona sur.</p>
-    <a href="#catalogo" class="btn btn-primary">Ver catálogo</a>
-    <a href="#pedido" class="btn btn-outline">Hacer un pedido</a>
+  <div class="hero-content">
+    <p class="hero-kicker">Carne fresca · Trato directo · Madrid</p>
+    <h1 class="hero-title">CORTES PREMIUM PARA<br>paladares exigentes</h1>
+    <p class="hero-subtitle">
+      Piezas seleccionadas personalmente en ganaderías de Castilla y León
+      y Extremadura. Del campo a tu puerta, sin intermediarios.
+    </p>
+    <div class="hero-actions">
+      <button class="btn-primary" onclick="document.getElementById('catalogo').scrollIntoView({behavior:'smooth'})">DESCUBRE NUESTRA SELECCIÓN</button>
+    </div>
+    <div class="hero-badges">
+      <span>Origen Trazable</span>
+      <span>·</span>
+      <span>Despiece Artesanal</span>
+      <span>·</span>
+      <span>Aceptamos Bizum</span>
+    </div>
   </div>
 </section>
 
 <!-- ── Catalog ──────────────────────────────────────────────────────────────── -->
-<section class="section" id="catalogo">
-  <div class="container">
-    <h2 class="section-title">Nuestro catálogo</h2>
-    <p class="section-sub">Precios por kilogramo · IVA incluido</p>
+<section id="catalogo" class="section-padding">
+  <div class="section-header">
+    <h2 class="section-title">NUESTROS CORTES DESTACADOS</h2>
+    <span class="section-rule"></span>
+  </div>
 
-    <!-- Category filter -->
-    <div class="filter-bar" id="filterBar" role="tablist">
-      <button class="filter-btn active" data-category="Todos" role="tab" aria-selected="true">Todos</button>
+  <div class="catalog-controls">
+    <div class="filters" id="filters">
+      <!-- JS inserta los botones de categoría aquí -->
     </div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="¿Qué corte buscas hoy?…" aria-label="Buscar producto" />
+    </div>
+  </div>
 
-    <!-- Search -->
-    <div class="search-wrap">
-      <input type="search" id="searchInput" placeholder="Buscar producto…" class="search-input" aria-label="Buscar producto" />
-    </div>
-
-    <!-- Product grid -->
-    <div class="product-grid" id="productGrid">
-      <p class="loading-msg">Cargando productos…</p>
-    </div>
+  <div class="products-grid" id="productsGrid">
+    <p class="loading-msg">Preparando el mostrador…</p>
   </div>
 </section>
 
-<!-- ── Order form ────────────────────────────────────────────────────────────── -->
-<section class="section section-alt" id="pedido">
-  <div class="container form-container">
-    <h2 class="section-title">Hacer un pedido</h2>
-    <p class="section-sub">Completa el formulario y te contactamos para confirmar tu entrega.</p>
+<!-- ── Checkout ──────────────────────────────────────────────────────────────── -->
+<section id="checkout" class="alternate-bg">
+  <div class="form-card">
+    <h2 class="section-title">FINALIZAR PEDIDO</h2>
+    <p class="form-intro">Completa tus datos y te llamamos para confirmar la entrega en menos de 30 minutos.</p>
 
-    <div class="order-layout">
-      <!-- Cart summary -->
-      <aside class="cart-summary" id="cartSummary">
-        <h3>Tu pedido</h3>
-        <ul class="cart-list" id="cartList">
-          <li class="cart-empty">Aún no has añadido productos.</li>
-        </ul>
-        <div class="cart-total">
-          <span>Total estimado</span>
-          <strong id="cartTotal">€0,00</strong>
-        </div>
-      </aside>
+    <div class="checkout-grid">
+      <div class="form-group">
+        <label for="custName">Nombre y apellidos *</label>
+        <input type="text" id="custName" name="name" autocomplete="name" placeholder="Ana García" />
+      </div>
+      <div class="form-group">
+        <label for="custPhone">Teléfono *</label>
+        <input type="tel" id="custPhone" name="phone" autocomplete="tel" placeholder="6XX XXX XXX" />
+      </div>
+      <div class="form-group full-width">
+        <label for="custAddress">Dirección de entrega *</label>
+        <textarea id="custAddress" name="address" rows="2" placeholder="Calle Mayor 12, 3º B, Madrid…" autocomplete="street-address"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="custZone">Zona de entrega *</label>
+        <select id="custZone" name="zone">
+          <option value="">— Selecciona tu zona —</option>
+          <option value="Centro">Centro (Retiro, Salamanca, Chamberí)</option>
+          <option value="Norte">Norte (Hortaleza, Fuencarral, Moncloa)</option>
+          <option value="Sur">Sur (Usera, Villaverde, Vallecas)</option>
+          <option value="Este">Este (San Blas, Vicálvaro, Moratalaz)</option>
+          <option value="Oeste">Oeste (Latina, Carabanchel, Pozuelo)</option>
+          <option value="Alcorcón">Alcorcón / Leganés</option>
+          <option value="Getafe">Getafe / Fuenlabrada</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label for="custSlot">Horario de entrega *</label>
+        <select id="custSlot" name="time_slot">
+          <option value="">— Selecciona una franja —</option>
+          <option value="Mañana (9:00–12:00)">Mañana (9:00–12:00)</option>
+          <option value="Mediodía (12:00–15:00)">Mediodía (12:00–15:00)</option>
+          <option value="Tarde (16:00–20:00)">Tarde (16:00–20:00)</option>
+        </select>
+      </div>
+      <div class="form-group full-width">
+        <label for="custPayment">Método de pago</label>
+        <select id="custPayment" name="payment_method">
+          <option value="Efectivo">Efectivo al recibir</option>
+          <option value="Bizum">Bizum</option>
+          <option value="Tarjeta">Tarjeta (datáfono en la puerta)</option>
+          <option value="Transferencia">Transferencia bancaria</option>
+        </select>
+      </div>
+    </div>
 
-      <!-- Customer form -->
-      <form class="order-form" id="orderForm" novalidate>
-        <div class="form-row">
-          <label for="custName">Nombre completo *</label>
-          <input type="text" id="custName" name="name" required autocomplete="name" placeholder="Ana García" />
-        </div>
-        <div class="form-row">
-          <label for="custPhone">Teléfono *</label>
-          <input type="tel" id="custPhone" name="phone" required autocomplete="tel" placeholder="6XX XXX XXX" />
-        </div>
-        <div class="form-row">
-          <label for="custAddress">Dirección completa *</label>
-          <input type="text" id="custAddress" name="address" required autocomplete="street-address" placeholder="Calle Mayor 12, 3º B" />
-        </div>
-        <div class="form-row">
-          <label for="custZone">Zona de entrega *</label>
-          <select id="custZone" name="zone" required>
-            <option value="">— Selecciona tu zona —</option>
-            <option value="Centro">Centro (Retiro, Salamanca, Chamberí)</option>
-            <option value="Norte">Norte (Hortaleza, Fuencarral, Moncloa)</option>
-            <option value="Sur">Sur (Usera, Villaverde, Vallecas)</option>
-            <option value="Este">Este (San Blas, Vicálvaro, Moratalaz)</option>
-            <option value="Oeste">Oeste (Latina, Carabanchel, Pozuelo)</option>
-            <option value="Alcorcón">Alcorcón / Leganés</option>
-            <option value="Getafe">Getafe / Fuenlabrada</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label for="custSlot">Horario preferido *</label>
-          <select id="custSlot" name="time_slot" required>
-            <option value="">— Selecciona un horario —</option>
-            <option value="Mañana (9:00–12:00)">Mañana (9:00–12:00)</option>
-            <option value="Mediodía (12:00–15:00)">Mediodía (12:00–15:00)</option>
-            <option value="Tarde (16:00–20:00)">Tarde (16:00–20:00)</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label for="custPayment">Método de pago</label>
-          <select id="custPayment" name="payment_method">
-            <option value="Efectivo">Efectivo al recibir</option>
-            <option value="Bizum">Bizum</option>
-            <option value="Tarjeta">Tarjeta (en la puerta)</option>
-            <option value="Transferencia">Transferencia bancaria</option>
-          </select>
-        </div>
-        <div class="form-row">
-          <label for="custNotes">Notas adicionales</label>
-          <textarea id="custNotes" name="notes" rows="3" placeholder="Indicaciones de acceso, corte especial…"></textarea>
-        </div>
-
-        <button type="submit" class="btn btn-primary btn-block" id="submitBtn">Confirmar pedido</button>
-        <p class="form-disclaimer">Recibirás una llamada de confirmación en los próximos 30 minutos.</p>
-      </form>
+    <div class="form-footer">
+      <button class="btn-primary large" id="submitBtn" onclick="App.submitOrder()">CONFIRMAR PEDIDO</button>
+      <p id="orderMessage"></p>
     </div>
   </div>
 </section>
 
 <!-- ── About ─────────────────────────────────────────────────────────────────── -->
-<section class="section" id="nosotros">
-  <div class="container about-grid">
+<section id="sobre" class="section-padding">
+  <div class="about-container">
     <div class="about-text">
-      <h2 class="section-title">Quiénes somos</h2>
+      <h2 class="section-title align-left">PASIÓN POR LA CALIDAD</h2>
+      <span class="section-rule" style="margin:0 0 2rem;display:block;"></span>
       <p>Llevamos más de tres décadas en el mismo barrio, con las mismas manos y la misma filosofía: comprar bien para vender bien. Trabajamos directamente con ganaderos de Castilla y León, Extremadura y Aragón, evitando la cadena de intermediarios que encarece el producto y reduce su frescura.</p>
-      <p>Cada pieza que sale por nuestra puerta —o que llega a la tuya— ha pasado por un control visual y táctil que ninguna cinta transportadora puede replicar. No porque seamos perfeccionistas, sino porque nos parece lo mínimo.</p>
+      <p>Cada pieza en nuestro mostrador —o que llega a tu puerta— ha pasado por un control visual y táctil que ninguna cinta transportadora puede replicar. No porque seamos perfeccionistas, sino porque nos parece lo mínimo.</p>
+      <div class="signature">La Gerencia</div>
     </div>
-    <div class="about-cards">
-      <div class="about-card">
-        <span class="about-icon">🐄</span>
-        <h3>Origen trazable</h3>
-        <p>Conocemos la granja de cada canal que recibimos. Puedes preguntarnos.</p>
-      </div>
-      <div class="about-card">
-        <span class="about-icon">🔪</span>
-        <h3>Despiece artesanal</h3>
-        <p>Sin máquinas de corte industrial. El cuchillo, la técnica y la experiencia.</p>
-      </div>
-      <div class="about-card">
-        <span class="about-icon">🚐</span>
-        <h3>Reparto en frío</h3>
-        <p>Vehículo isotérmico con control de temperatura. De 0 a 4 °C en todo momento.</p>
-      </div>
-      <div class="about-card">
-        <span class="about-icon">📞</span>
-        <h3>Atención directa</h3>
-        <p>Confirmas el pedido con la persona que lo prepara. Sin bots, sin formularios perdidos.</p>
+    <div class="about-visual">
+      <div class="image-frame">
+        <div class="frame-content">Est. 1987</div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ── Footer ───────────────────────────────────────────────────────────────── -->
-<footer class="site-footer">
-  <div class="container footer-inner">
-    <div class="footer-brand">
-      <p class="logo-name">Carnicería Artesanal</p>
+<!-- ── Contact ───────────────────────────────────────────────────────────────── -->
+<section id="contacto" class="contact-section">
+  <div class="contact-grid">
+    <div class="contact-info">
+      <h3>INSTAGRAM</h3>
+      <a href="https://instagram.com/carniceriaartesanal" target="_blank" rel="noopener">@carniceriaartesanal</a>
+    </div>
+    <div class="contact-info">
+      <h3>UBICACIÓN</h3>
       <p>C/ de la Carrera, 14 · Madrid 28001</p>
-      <p>Lun–Sáb 8:00–20:00</p>
     </div>
-    <div class="footer-contact">
-      <p>📞 <a href="tel:+34600000000">600 000 000</a></p>
-      <p>📱 Bizum: 600 000 000</p>
-      <p>📧 <a href="mailto:hola@carniceriaartesanal.es">hola@carniceriaartesanal.es</a></p>
+    <div class="contact-info">
+      <h3>HORARIO</h3>
+      <p>Lun – Sáb: 8:00 – 20:00</p>
     </div>
   </div>
-  <p class="footer-copy">© 2024 Carnicería Artesanal · Hecho con ❤️ en Madrid</p>
-</footer>
+</section>
 
-<!-- ── Cart modal ────────────────────────────────────────────────────────────── -->
-<div class="modal-overlay" id="cartModal" role="dialog" aria-modal="true" aria-label="Carrito de compra" hidden>
-  <div class="modal-box">
-    <button class="modal-close" id="cartModalClose" aria-label="Cerrar carrito">✕</button>
-    <h2>Tu carrito</h2>
-    <ul class="cart-list" id="modalCartList"></ul>
-    <div class="cart-total">
-      <span>Total</span>
-      <strong id="modalCartTotal">€0,00</strong>
+<!-- ── Floating cart button ──────────────────────────────────────────────────── -->
+<button class="cart-floating-btn" id="cartFloatBtn" aria-label="Abrir carrito">
+  <span class="icon">🛒</span>
+  <span class="label">MI PEDIDO</span>
+  <span class="count" id="cartCount">0</span>
+</button>
+
+<!-- ── Cart side panel ───────────────────────────────────────────────────────── -->
+<aside class="cart-panel" id="cartPanel" aria-label="Carrito de compra">
+  <div class="cart-inner">
+    <div class="cart-header">
+      <h3>TU CARRITO</h3>
+      <button class="close-cart" id="closeCart" aria-label="Cerrar carrito">✕</button>
     </div>
-    <a href="#pedido" class="btn btn-primary btn-block" id="goToOrderBtn">Ir al formulario de pedido</a>
+    <div class="cart-body" id="cartItems">
+      <!-- JS renderiza los items aquí -->
+    </div>
+    <div class="cart-footer">
+      <div class="subtotal-row">
+        <span>Subtotal estimado:</span>
+        <strong id="cartSubtotal">0,00 €</strong>
+      </div>
+      <div class="cart-actions">
+        <button class="btn-secondary" id="clearCartBtn">VACIAR</button>
+        <button class="btn-primary" id="goToCheckoutBtn">FINALIZAR</button>
+      </div>
+    </div>
   </div>
-</div>
+</aside>
 
 <!-- ── Toast ─────────────────────────────────────────────────────────────────── -->
 <div class="toast" id="toast" role="alert" aria-live="polite" hidden></div>
+
+<!-- ── Footer ───────────────────────────────────────────────────────────────── -->
+<footer class="main-footer">
+  <p>© <span id="year"></span> Carnicería Artesanal · Calidad Superior · Madrid, España</p>
+  <p class="footer-note">Bizum disponible en todos los pedidos. Reparto con vehículo isotérmico.</p>
+</footer>
 
 <script src="/assets/js/main.js"></script>
 </body>

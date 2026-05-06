@@ -1,6 +1,6 @@
 'use strict';
 
-// ── Utilities ────────────────────────────────────────────────────────────────
+// ── Utilities ─────────────────────────────────────────────────────────────────
 
 function escHtml(str) {
   return String(str)
@@ -43,103 +43,86 @@ function updateCartBadge() {
   document.getElementById('cartCount').textContent = cartItemCount();
 }
 
-function renderCartList(listEl, totalEl) {
-  listEl.innerHTML = '';
+function renderCartPanel() {
+  const body    = document.getElementById('cartItems');
+  const subtotal = document.getElementById('cartSubtotal');
 
   if (cart.size === 0) {
-    listEl.innerHTML = '<li class="cart-empty">Aún no has añadido productos.</li>';
-    totalEl.textContent = formatEur(0);
+    body.innerHTML = '<p class="cart-empty-msg">Aún no has añadido productos.</p>';
+    subtotal.textContent = formatEur(0);
     return;
   }
 
+  let html = '';
   cart.forEach((item, id) => {
-    const li = document.createElement('li');
-    li.innerHTML = `
-      <div class="cart-item-row">
-        <div>
+    html += `
+      <div class="cart-item">
+        <div class="cart-item-info">
           <p class="cart-item-name">${escHtml(item.name)}</p>
-          <p class="cart-item-sub">${formatEur(item.price)}/kg</p>
+          <p class="cart-item-sub">${formatEur(item.price)}/kg × ${item.qty} kg</p>
         </div>
-        <div class="qty-control">
-          <button class="qty-btn" data-id="${escHtml(String(id))}" data-action="dec" aria-label="Reducir cantidad">−</button>
-          <span class="qty-value">${item.qty}</span>
-          <button class="qty-btn" data-id="${escHtml(String(id))}" data-action="inc" aria-label="Aumentar cantidad">+</button>
+        <div class="cart-item-right">
+          <span class="cart-item-total">${formatEur(item.price * item.qty)}</span>
+          <button class="cart-item-remove" data-id="${escHtml(String(id))}" aria-label="Eliminar ${escHtml(item.name)}">✕ quitar</button>
         </div>
-        <span class="cart-item-price">${formatEur(item.price * item.qty)}</span>
-        <button class="cart-item-remove" data-id="${escHtml(String(id))}" aria-label="Eliminar producto">✕</button>
       </div>`;
-    listEl.appendChild(li);
   });
 
-  totalEl.textContent = formatEur(cartTotal());
+  body.innerHTML = html;
+  subtotal.textContent = formatEur(cartTotal());
 }
 
-function refreshAllCartUIs() {
+function refreshCart() {
   updateCartBadge();
-
-  // Sidebar in form section
-  renderCartList(
-    document.getElementById('cartList'),
-    document.getElementById('cartTotal')
-  );
-
-  // Modal
-  renderCartList(
-    document.getElementById('modalCartList'),
-    document.getElementById('modalCartTotal')
-  );
+  renderCartPanel();
 }
 
-function handleCartAction(e) {
-  const btn = e.target.closest('[data-id]');
-  if (!btn) return;
+// ── Cart panel toggle ──────────────────────────────────────────────────────────
 
-  const id = parseInt(btn.dataset.id, 10);
-  const action = btn.dataset.action;
+function openCart() {
+  document.getElementById('cartPanel').classList.add('open');
+  document.body.style.overflow = 'hidden';
+  refreshCart();
+}
 
-  if (action === 'inc') {
-    if (cart.has(id)) cart.get(id).qty += 1;
-  } else if (action === 'dec') {
-    if (cart.has(id)) {
-      cart.get(id).qty -= 1;
-      if (cart.get(id).qty <= 0) cart.delete(id);
-    }
-  } else if (btn.classList.contains('cart-item-remove')) {
-    cart.delete(id);
-  }
-
-  refreshAllCartUIs();
+function closeCart() {
+  document.getElementById('cartPanel').classList.remove('open');
+  document.body.style.overflow = '';
 }
 
 // ── Products ──────────────────────────────────────────────────────────────────
 
-let allProducts = [];
 let activeCategory = 'Todos';
 
 async function loadCategories() {
   try {
     const res = await fetch('/api/products/categories');
-    if (!res.ok) throw new Error('categories');
+    if (!res.ok) throw new Error();
     const cats = await res.json();
-    const bar = document.getElementById('filterBar');
+    const bar  = document.getElementById('filters');
+
+    // "Todos" button (already in HTML template via JS to keep it DRY)
+    const allBtn = document.createElement('button');
+    allBtn.className = 'filter-btn active';
+    allBtn.dataset.category = 'Todos';
+    allBtn.textContent = 'Todos';
+    bar.appendChild(allBtn);
 
     cats.forEach(cat => {
       const btn = document.createElement('button');
       btn.className = 'filter-btn';
       btn.dataset.category = cat;
       btn.textContent = cat;
-      btn.setAttribute('role', 'tab');
-      btn.setAttribute('aria-selected', 'false');
       bar.appendChild(btn);
     });
   } catch {
-    // silently ignore — "Todos" still works
+    // Filters unavailable — search still works
   }
 }
 
 async function loadProducts(category, search) {
-  const grid = document.getElementById('productGrid');
-  grid.innerHTML = '<p class="loading-msg">Cargando…</p>';
+  const grid = document.getElementById('productsGrid');
+  grid.innerHTML = '<p class="loading-msg">Preparando el mostrador…</p>';
 
   try {
     const params = new URLSearchParams();
@@ -147,39 +130,47 @@ async function loadProducts(category, search) {
     if (search) params.set('search', search);
 
     const res = await fetch(`/api/products?${params}`);
-    if (!res.ok) throw new Error('products');
-    allProducts = await res.json();
-    renderProducts(allProducts);
+    if (!res.ok) throw new Error();
+    const products = await res.json();
+    renderProducts(products);
   } catch {
     grid.innerHTML = '<p class="loading-msg">No se pudieron cargar los productos. Inténtalo de nuevo.</p>';
   }
 }
 
 function renderProducts(products) {
-  const grid = document.getElementById('productGrid');
+  const grid = document.getElementById('productsGrid');
 
   if (products.length === 0) {
-    grid.innerHTML = '<p class="loading-msg">No se encontraron productos.</p>';
+    grid.innerHTML = '<p class="loading-msg">No encontramos ese corte. Prueba con otro término.</p>';
     return;
   }
 
   grid.innerHTML = products.map(p => {
     const bgStyle = p.image_url
-      ? `background-image: url('/assets/img/${escHtml(p.image_url)}'); background-size: cover; background-position: center;`
-      : `background-color: var(--clr-warm);`;
+      ? `background-image:url('/assets/img/${escHtml(p.image_url)}');`
+      : '';
 
     return `
-      <article class="product-card" data-id="${p.id}">
-        <div class="product-img" style="${bgStyle}" role="img" aria-label="${escHtml(p.name)}"></div>
+      <article class="product-card">
+        <div class="product-image" style="${bgStyle}" role="img" aria-label="${escHtml(p.name)}">
+          <span class="product-price-badge">${formatEur(p.price)}/kg</span>
+        </div>
         <div class="product-body">
+          <span class="product-category">${escHtml(p.category)}</span>
           <p class="product-name">${escHtml(p.name)}</p>
           <p class="product-note">${escHtml(p.note || '')}</p>
-          <div class="product-footer">
-            <div>
-              <span class="product-price">${formatEur(p.price)}</span>
-              <span class="product-unit">/kg</span>
-            </div>
-            <button class="add-btn" data-id="${p.id}" data-name="${escHtml(p.name)}" data-price="${p.price}" aria-label="Añadir ${escHtml(p.name)} al carrito">+</button>
+          <div class="product-actions">
+            <input class="qty-input"
+              type="number" min="1" max="20" value="1"
+              id="qty-${p.id}"
+              aria-label="Cantidad en kg para ${escHtml(p.name)}" />
+            <button class="btn-primary"
+              data-id="${p.id}"
+              data-name="${escHtml(p.name)}"
+              data-price="${p.price}">
+              AÑADIR
+            </button>
           </div>
         </div>
       </article>`;
@@ -187,131 +178,131 @@ function renderProducts(products) {
 }
 
 function handleAddToCart(e) {
-  const btn = e.target.closest('.add-btn');
+  const btn = e.target.closest('button[data-id]');
   if (!btn) return;
 
   const id    = parseInt(btn.dataset.id, 10);
   const name  = btn.dataset.name;
   const price = parseFloat(btn.dataset.price);
+  const qtyEl = document.getElementById(`qty-${id}`);
+  const qty   = Math.max(1, parseInt(qtyEl?.value || '1', 10));
 
   if (cart.has(id)) {
-    cart.get(id).qty += 1;
+    cart.get(id).qty += qty;
   } else {
-    cart.set(id, { name, price, qty: 1 });
+    cart.set(id, { name, price, qty });
   }
 
-  refreshAllCartUIs();
-  showToast(`${name} añadido al carrito`);
+  refreshCart();
+  showToast(`${name} (${qty} kg) añadido al carrito`);
 }
 
-// ── Order form ────────────────────────────────────────────────────────────────
+function handleCartRemove(e) {
+  const btn = e.target.closest('.cart-item-remove');
+  if (!btn) return;
+  cart.delete(parseInt(btn.dataset.id, 10));
+  refreshCart();
+}
 
-async function submitOrder(e) {
-  e.preventDefault();
-  const form = e.target;
+// ── Order submission ──────────────────────────────────────────────────────────
 
-  if (cart.size === 0) {
-    showToast('Añade al menos un producto antes de confirmar.', 3500);
-    return;
-  }
-
-  // Basic validation
-  const required = ['custName', 'custPhone', 'custAddress', 'custZone', 'custSlot'];
-  let valid = true;
-  required.forEach(id => {
-    const el = document.getElementById(id);
-    if (!el.value.trim()) {
-      el.classList.add('invalid');
-      valid = false;
-    } else {
-      el.classList.remove('invalid');
+const App = {
+  submitOrder: async function () {
+    if (cart.size === 0) {
+      showToast('Añade al menos un producto antes de confirmar.', 3500);
+      return;
     }
-  });
 
-  if (!valid) {
-    showToast('Por favor, completa todos los campos obligatorios.', 3500);
-    return;
-  }
+    const required = [
+      { id: 'custName',    label: 'nombre' },
+      { id: 'custPhone',   label: 'teléfono' },
+      { id: 'custAddress', label: 'dirección' },
+      { id: 'custZone',    label: 'zona' },
+      { id: 'custSlot',    label: 'horario' },
+    ];
 
-  const btn = document.getElementById('submitBtn');
-  btn.disabled = true;
-  btn.textContent = 'Enviando…';
-
-  const items = [];
-  cart.forEach((item, id) => {
-    items.push({ id, name: item.name, price: item.price, qty: item.qty });
-  });
-
-  const body = {
-    name:           document.getElementById('custName').value.trim(),
-    phone:          document.getElementById('custPhone').value.trim(),
-    address:        document.getElementById('custAddress').value.trim(),
-    zone:           document.getElementById('custZone').value,
-    time_slot:      document.getElementById('custSlot').value,
-    payment_method: document.getElementById('custPayment').value,
-    items,
-  };
-
-  try {
-    const res = await fetch('/api/orders', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body),
+    let valid = true;
+    required.forEach(({ id }) => {
+      const el = document.getElementById(id);
+      if (!el.value.trim()) {
+        el.classList.add('invalid');
+        valid = false;
+      } else {
+        el.classList.remove('invalid');
+      }
     });
 
-    const data = await res.json();
+    if (!valid) {
+      showToast('Completa todos los campos obligatorios (*).', 3500);
+      return;
+    }
 
-    if (!res.ok) throw new Error(data.error || 'Error desconocido');
+    const btn = document.getElementById('submitBtn');
+    const msg = document.getElementById('orderMessage');
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+    msg.textContent = '';
 
-    cart.clear();
-    refreshAllCartUIs();
-    form.reset();
-    showToast('¡Pedido recibido! Te llamamos en breve para confirmar.', 5000);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  } catch (err) {
-    showToast(`Error al enviar el pedido: ${err.message}`, 5000);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = 'Confirmar pedido';
-  }
-}
+    const items = [];
+    cart.forEach((item, id) => {
+      items.push({ id, name: item.name, price: item.price, qty: item.qty });
+    });
 
-// ── Modal ─────────────────────────────────────────────────────────────────────
+    const body = {
+      name:           document.getElementById('custName').value.trim(),
+      phone:          document.getElementById('custPhone').value.trim(),
+      address:        document.getElementById('custAddress').value.trim(),
+      zone:           document.getElementById('custZone').value,
+      time_slot:      document.getElementById('custSlot').value,
+      payment_method: document.getElementById('custPayment').value,
+      items,
+    };
 
-function openCart() {
-  refreshAllCartUIs();
-  const modal = document.getElementById('cartModal');
-  modal.hidden = false;
-  document.body.style.overflow = 'hidden';
-}
+    try {
+      const res  = await fetch('/api/orders', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify(body),
+      });
+      const data = await res.json();
 
-function closeCart() {
-  document.getElementById('cartModal').hidden = true;
-  document.body.style.overflow = '';
-}
+      if (!res.ok) throw new Error(data.error || 'Error desconocido');
+
+      cart.clear();
+      refreshCart();
+      document.getElementById('custName').closest('form')?.reset();
+      msg.textContent = '✔ Pedido recibido. Te llamamos en breve para confirmar.';
+      showToast('¡Pedido enviado con éxito!', 5000);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (err) {
+      msg.textContent = `Error: ${err.message}`;
+      showToast(`No se pudo enviar el pedido: ${err.message}`, 5000);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'CONFIRMAR PEDIDO';
+    }
+  },
+};
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', async () => {
+  document.getElementById('year').textContent = new Date().getFullYear();
+
   await loadCategories();
   await loadProducts('Todos', '');
 
-  // Category filter
-  document.getElementById('filterBar').addEventListener('click', e => {
+  // Category filters
+  document.getElementById('filters').addEventListener('click', e => {
     const btn = e.target.closest('.filter-btn');
     if (!btn) return;
-
-    document.querySelectorAll('.filter-btn').forEach(b => {
-      b.classList.remove('active');
-      b.setAttribute('aria-selected', 'false');
-    });
+    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    btn.setAttribute('aria-selected', 'true');
     activeCategory = btn.dataset.category;
     loadProducts(activeCategory, document.getElementById('searchInput').value.trim());
   });
 
-  // Search (debounced)
+  // Search with debounce
   let searchTimer;
   document.getElementById('searchInput').addEventListener('input', e => {
     clearTimeout(searchTimer);
@@ -320,31 +311,28 @@ document.addEventListener('DOMContentLoaded', async () => {
     }, 320);
   });
 
-  // Add to cart (event delegation)
-  document.getElementById('productGrid').addEventListener('click', handleAddToCart);
+  // Add to cart (event delegation on grid)
+  document.getElementById('productsGrid').addEventListener('click', handleAddToCart);
 
-  // Cart qty controls (sidebar + modal)
-  document.getElementById('cartList').addEventListener('click', handleCartAction);
-  document.getElementById('modalCartList').addEventListener('click', handleCartAction);
-
-  // Cart modal
-  document.getElementById('cartBtn').addEventListener('click', openCart);
-  document.getElementById('cartModalClose').addEventListener('click', closeCart);
-  document.getElementById('cartModal').addEventListener('click', e => {
-    if (e.target === e.currentTarget) closeCart();
+  // Cart panel controls
+  document.getElementById('cartFloatBtn').addEventListener('click', openCart);
+  document.getElementById('closeCart').addEventListener('click', closeCart);
+  document.getElementById('clearCartBtn').addEventListener('click', () => {
+    cart.clear();
+    refreshCart();
   });
-  document.getElementById('goToOrderBtn').addEventListener('click', closeCart);
-
-  // Order form
-  document.getElementById('orderForm').addEventListener('submit', submitOrder);
-
-  // Remove invalid class on input
-  document.getElementById('orderForm').addEventListener('input', e => {
-    e.target.classList.remove('invalid');
+  document.getElementById('goToCheckoutBtn').addEventListener('click', () => {
+    closeCart();
+    document.getElementById('checkout').scrollIntoView({ behavior: 'smooth' });
   });
 
-  // Escape closes modal
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closeCart();
-  });
+  // Remove items from panel
+  document.getElementById('cartItems').addEventListener('click', handleCartRemove);
+
+  // Remove invalid on input
+  document.querySelectorAll('#checkout input, #checkout select, #checkout textarea')
+    .forEach(el => el.addEventListener('input', () => el.classList.remove('invalid')));
+
+  // Escape closes panel
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCart(); });
 });

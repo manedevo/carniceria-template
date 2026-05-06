@@ -2,7 +2,7 @@
 set -euo pipefail
 
 echo ""
-echo "=== Limpieza completa del proyecto Carnicería ==="
+echo "=== Carniceria Artesanal — Full Cleanup ==="
 echo ""
 
 # ── Colores ───────────────────────────────────────────────────────────────────
@@ -19,21 +19,21 @@ PROJECT_DIR="/opt/carniceria-template"
 LOCAL_COMPOSE="./docker-compose.yml"
 
 if [[ -f "$PROJECT_DIR/docker-compose.yml" ]]; then
-    info "Deteniendo contenedores del proyecto (${PROJECT_DIR})..."
+    info "Stopping project containers (${PROJECT_DIR})..."
     sudo docker compose -f "$PROJECT_DIR/docker-compose.yml" down --volumes --remove-orphans 2>/dev/null || true
 elif [[ -f "$LOCAL_COMPOSE" ]]; then
-    info "Deteniendo contenedores del proyecto (directorio actual)..."
+    info "Stopping project containers (current directory)..."
     sudo docker compose -f "$LOCAL_COMPOSE" down --volumes --remove-orphans 2>/dev/null || true
 else
-    warn "No se encontró docker-compose.yml. Saltando parada de contenedores."
+    warn "docker-compose.yml not found. Skipping container shutdown."
 fi
 
 
 #############################################################
-##### 2. Borrar imágenes del proyecto
+##### 2. Remove project images
 #############################################################
 
-info "Eliminando imágenes del proyecto (carniceria-template)..."
+info "Removing project images (carniceria-template)..."
 sudo docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' \
     | grep -i "carniceria" \
     | awk '{print $2}' \
@@ -41,50 +41,50 @@ sudo docker images --format '{{.Repository}}:{{.Tag}} {{.ID}}' \
 
 
 #############################################################
-##### 3. Limpiar recursos Docker huérfanos
+##### 3. Prune orphaned Docker resources
 #############################################################
 
-info "Eliminando contenedores parados..."
+info "Removing stopped containers..."
 sudo docker container prune -f 2>/dev/null || true
 
-info "Eliminando volúmenes no usados..."
+info "Removing unused volumes..."
 sudo docker volume prune -f 2>/dev/null || true
 
-info "Eliminando redes no usadas..."
+info "Removing unused networks..."
 sudo docker network prune -f 2>/dev/null || true
 
-info "Limpiando caché de build..."
+info "Clearing build cache..."
 sudo docker builder prune -af 2>/dev/null || true
 
 
 #############################################################
-##### 4. Borrar proyecto instalado en /opt/carniceria-template
+##### 4. Remove installed project at /opt/carniceria-template
 #############################################################
 
 if [[ -d "/opt/carniceria-template" ]]; then
-    info "Eliminando /opt/carniceria-template..."
+    info "Removing /opt/carniceria-template..."
     sudo rm -rf /opt/carniceria-template
 fi
 
-# Compatibilidad con instalaciones antiguas (nombre anterior)
+# Backwards compatibility with old install path
 if [[ -d "/opt/carniceria" ]]; then
-    warn "Encontrada instalación antigua en /opt/carniceria — eliminando..."
+    warn "Found old installation at /opt/carniceria — removing..."
     sudo rm -rf /opt/carniceria
 fi
 
 
 #############################################################
-##### 5. Borrar .env en el directorio actual
+##### 5. Remove local .env file
 #############################################################
 
 if [[ -f "./.env" ]]; then
-    info "Eliminando .env local..."
+    info "Removing local .env..."
     rm -f ./.env
 fi
 
 
 #############################################################
-##### 6. Borrar carpetas clonadas del proyecto en $HOME
+##### 6. Remove cloned project folders in $HOME
 #############################################################
 
 for dir in \
@@ -94,28 +94,28 @@ for dir in \
     "$HOME/carniceria_arroba/carniceria"
 do
     if [[ -d "$dir" ]]; then
-        info "Eliminando carpeta ${dir}..."
+        info "Removing folder ${dir}..."
         rm -rf "$dir"
     fi
 done
 
 
 #############################################################
-##### 7. Borrar restos de instalaciones anteriores en $HOME
+##### 7. Remove leftover installation folders in $HOME
 #############################################################
 
-info "Buscando restos de instalaciones previas en \$HOME..."
+info "Searching for leftover installation folders in \$HOME..."
 find "$HOME" -maxdepth 3 -type d -name "carniceria*" -exec rm -rf {} + 2>/dev/null || true
 
 
 #############################################################
-##### 8. Confirmación final
+##### 8. Done
 #############################################################
 
 echo ""
 echo -e "${GREEN}══════════════════════════════════════════════${NC}"
-echo -e "${GREEN}  Limpieza completada correctamente            ${NC}"
+echo -e "${GREEN}  Cleanup complete                             ${NC}"
 echo -e "${GREEN}══════════════════════════════════════════════${NC}"
 echo ""
-echo "Todo lo relacionado con el proyecto ha sido eliminado."
+echo "Everything related to the project has been removed."
 echo ""

@@ -28,7 +28,7 @@ Abre `http://<ip-de-tu-servidor>:3000`.
 ### Actualizar
 
 ```bash
-git pull origin main
+git pull origin master
 docker compose up -d --build
 ```
 
@@ -41,7 +41,7 @@ El esquema de la base de datos solo se aplica una vez (en el primer arranque), p
 Para un VPS con Ubuntu 22.04 / 24.04 o RHEL/Fedora recién instalado. El script instala Docker, clona el repositorio, genera un `.env` e inicia los contenedores.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/manedevo/carniceria-template/main/deployment/setup.sh \
+curl -fsSL https://raw.githubusercontent.com/manedevo/carniceria-template/master/deployment/setup.sh \
   | sudo bash
 ```
 
@@ -57,22 +57,52 @@ El script es idempotente: ejecutarlo de nuevo en una instalación existente desc
 
 ## Opción C — VM con Vagrant (pruebas locales)
 
-¿Sin Docker? ¿Sin VPS? Levanta una VM Ubuntu local:
+¿Sin Docker? ¿Sin VPS? Levanta una VM Ubuntu local.
+
+### Windows (sin requisitos previos)
+
+Haz doble-click en `deployment/Vm_tests/windows/launch.bat`. El lanzador:
+
+1. Solicita privilegios de administrador automáticamente (prompt UAC)
+2. Instala **Chocolatey** (gestor de paquetes de Windows) si no está presente
+3. Detecta VMware Workstation — o instala **VirtualBox** si no hay hipervisor
+4. Instala **Vagrant** si no está presente
+5. Instala el plugin `vagrant-vmware-desktop` si se detectó VMware
+6. Ejecuta `vagrant up` con el provider correcto
+
+Sin pasos manuales. Sin software previo necesario.
+
+### Linux / macOS
+
+Con Vagrant ya instalado:
 
 ```bash
 cd deployment/Vm_tests
 vagrant up
 ```
 
-El primer arranque tarda 15–20 minutos (descarga la box, instala Docker y construye la app). Después:
+El Vagrantfile detecta automáticamente el hipervisor instalado e instala el plugin de VMware si es necesario.
+
+### Después de que la VM esté en marcha
+
+El primer arranque tarda 15–20 minutos. Después:
 
 ```bash
+cd deployment/Vm_tests
 vagrant halt       # parar la VM
 vagrant up         # volver a arrancar (segundos)
+vagrant ssh        # abrir una shell dentro de la VM
 vagrant destroy -f # borrar todo
 ```
 
 La app está disponible en `http://localhost:8080` desde tu máquina anfitriona.
+
+> **Forzar un provider manualmente** (opcional):
+> ```bash
+> VAGRANT_DEFAULT_PROVIDER=virtualbox vagrant up
+> # o en Windows PowerShell:
+> $env:VAGRANT_DEFAULT_PROVIDER="virtualbox"; vagrant up
+> ```
 
 ---
 

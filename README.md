@@ -31,7 +31,7 @@ Built as a personal portfolio project to demonstrate end-to-end web development:
 | Fonts       | Google Fonts — Playfair Display + Inter |
 | Container   | Docker + Docker Compose v2              |
 | Security    | Helmet.js, parameterized queries        |
-| Dev VM      | Vagrant + VirtualBox (Ubuntu 22.04)     |
+| Dev VM      | Vagrant + VirtualBox / VMware (Ubuntu 22.04) |
 
 ---
 
@@ -58,9 +58,17 @@ carniceria-template/
 │       ├── js/main.js
 │       └── img/                  Drop product images here (see below)
 ├── deployment/
-│   ├── setup.sh                  Automated Linux installer
+│   ├── setup.sh                  Automated Linux installer (VPS)
 │   └── Vm_tests/
-│       └── Vagrantfile           Local test VM
+│       ├── Vagrantfile           Local test VM (auto-detects VirtualBox / VMware)
+│       └── windows/
+│           ├── launch.bat        Double-click launcher for Windows (no prerequisites)
+│           └── launch.ps1        PowerShell setup logic (installs everything)
+├── setup/
+│   ├── setup_sh/
+│   │   └── setup.sh              Smart installer (multi-distro, auto Docker)
+│   └── undo_limpieza_total/
+│       └── limpieza_total.sh     Full cleanup script for test machines
 ├── docs/                         English documentation
 │   ├── architecture.md
 │   └── deployment.md
@@ -93,14 +101,20 @@ The database schema and seed data are applied automatically on the first start v
 
 ## Quick start (Vagrant — local VM)
 
-No Docker on your machine? Spin up a full Ubuntu VM:
+No Docker on your machine? Spin up a full Ubuntu VM.
+
+**On Windows** — double-click `deployment/Vm_tests/windows/launch.bat`. It installs everything from scratch (Chocolatey, VirtualBox or detects VMware, Vagrant, plugins) and starts the VM. No prerequisites needed.
+
+**On Linux / macOS** — with Vagrant already installed:
 
 ```bash
 cd deployment/Vm_tests
-vagrant up          # provisions everything (15–20 min first boot)
+vagrant up
 ```
 
-App will be available at [http://localhost:8080](http://localhost:8080) on your host.
+The Vagrantfile **auto-detects** the installed hypervisor (VMware Fusion, VMware Workstation, or VirtualBox) and installs the VMware Vagrant plugin automatically if needed. No flags or manual steps required.
+
+First boot takes 15–20 minutes (downloads the box, installs Docker, builds the app). App will be available at [http://localhost:8080](http://localhost:8080) on your host.
 
 ---
 

@@ -28,7 +28,7 @@ Open `http://<your-server-ip>:3000`.
 ### Updating
 
 ```bash
-git pull origin main
+git pull origin master
 docker compose up -d --build
 ```
 
@@ -41,7 +41,7 @@ The database schema is only applied once (on first boot), so existing orders and
 For a fresh Ubuntu 22.04 / 24.04 or RHEL/Fedora VPS. The script installs Docker, clones the repo, generates a `.env`, and starts the containers.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/manedevo/carniceria-template/main/deployment/setup.sh \
+curl -fsSL https://raw.githubusercontent.com/manedevo/carniceria-template/master/deployment/setup.sh \
   | sudo bash
 ```
 
@@ -57,22 +57,52 @@ The script is idempotent — running it again on an existing installation will p
 
 ## Option C — Vagrant VM (local testing)
 
-No Docker? No VPS? Spin up a local Ubuntu VM:
+No Docker? No VPS? Spin up a local Ubuntu VM.
+
+### Windows (zero prerequisites)
+
+Double-click `deployment/Vm_tests/windows/launch.bat`. The launcher:
+
+1. Requests administrator privileges automatically (UAC prompt)
+2. Installs **Chocolatey** (Windows package manager) if not present
+3. Detects VMware Workstation — or installs **VirtualBox** if no hypervisor is found
+4. Installs **Vagrant** if not present
+5. Installs the `vagrant-vmware-desktop` plugin if VMware was detected
+6. Runs `vagrant up` with the correct provider
+
+No manual steps. No prior software needed.
+
+### Linux / macOS
+
+With Vagrant already installed:
 
 ```bash
 cd deployment/Vm_tests
 vagrant up
 ```
 
-First boot takes 15–20 minutes (downloads the box, installs Docker, builds the app). After that:
+The Vagrantfile auto-detects the installed hypervisor (VMware Fusion, VMware Workstation, or VirtualBox) and installs the VMware Vagrant plugin automatically if needed.
+
+### After the VM is running
+
+First boot takes 15–20 minutes. After that:
 
 ```bash
+cd deployment/Vm_tests
 vagrant halt       # stop VM
 vagrant up         # start again (seconds)
+vagrant ssh        # open a shell inside the VM
 vagrant destroy -f # delete everything
 ```
 
-The app is available at `http://localhost:8080` on your host machine.
+App is available at `http://localhost:8080` on your host machine.
+
+> **Override provider manually** (optional):
+> ```bash
+> VAGRANT_DEFAULT_PROVIDER=virtualbox vagrant up
+> # or on Windows:
+> $env:VAGRANT_DEFAULT_PROVIDER="virtualbox"; vagrant up
+> ```
 
 ---
 

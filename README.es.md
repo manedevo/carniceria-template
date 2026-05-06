@@ -29,7 +29,7 @@ Desarrollado como proyecto personal de portafolio para demostrar desarrollo web 
 | Fuentes     | Google Fonts — Playfair Display + Inter |
 | Contenedor  | Docker + Docker Compose v2              |
 | Seguridad   | Helmet.js, consultas parametrizadas     |
-| VM dev      | Vagrant + VirtualBox (Ubuntu 22.04)     |
+| VM dev      | Vagrant + VirtualBox / VMware (Ubuntu 22.04) |
 
 ---
 
@@ -56,9 +56,17 @@ carniceria-template/
 │       ├── js/main.js
 │       └── img/                  Deposita aquí las imágenes de productos
 ├── deployment/
-│   ├── setup.sh                  Instalador automatizado para Linux
+│   ├── setup.sh                  Instalador automatizado para VPS Linux
 │   └── Vm_tests/
-│       └── Vagrantfile           VM de pruebas local
+│       ├── Vagrantfile           VM de pruebas local (detecta VirtualBox / VMware)
+│       └── windows/
+│           ├── launch.bat        Lanzador con doble-click para Windows (sin requisitos)
+│           └── launch.ps1        Lógica PowerShell (instala todo automáticamente)
+├── setup/
+│   ├── setup_sh/
+│   │   └── setup.sh              Instalador inteligente (multi-distro, Docker auto)
+│   └── undo_limpieza_total/
+│       └── limpieza_total.sh     Limpieza completa para máquinas de prueba
 ├── docs/                         Documentación en inglés
 ├── docs/es/                      Documentación en español
 ├── docker-compose.yml
@@ -87,14 +95,20 @@ El esquema y los datos de ejemplo se aplican automáticamente en el primer arran
 
 ## Inicio rápido (Vagrant — VM local)
 
-¿No tienes Docker instalado? Levanta una VM Ubuntu completa:
+¿No tienes Docker instalado? Levanta una VM Ubuntu completa.
+
+**En Windows** — haz doble-click en `deployment/Vm_tests/windows/launch.bat`. Instala todo desde cero (Chocolatey, VirtualBox o detecta VMware, Vagrant, plugins) y arranca la VM. No se necesita nada instalado previamente.
+
+**En Linux / macOS** — con Vagrant ya instalado:
 
 ```bash
 cd deployment/Vm_tests
-vagrant up          # aprovisiona todo (15–20 min en el primer arranque)
+vagrant up
 ```
 
-La app estará disponible en [http://localhost:8080](http://localhost:8080) desde tu máquina.
+El Vagrantfile **detecta automáticamente** el hipervisor instalado (VMware Fusion, VMware Workstation o VirtualBox) e instala el plugin de VMware para Vagrant si es necesario. No hace falta ningún flag ni paso manual.
+
+El primer arranque tarda 15–20 minutos (descarga la box, instala Docker y construye la app). La app estará disponible en [http://localhost:8080](http://localhost:8080) desde tu máquina.
 
 ---
 

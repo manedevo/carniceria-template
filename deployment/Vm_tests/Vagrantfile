@@ -1,11 +1,15 @@
 # Vagrantfile — Carnicería Artesanal local test VM
-# Prerequisites: VirtualBox + Vagrant
-# Usage:
-#   cd deployment/Vm_tests
-#   vagrant up            # first boot (15-20 min)
-#   vagrant ssh           # open a shell
-#   vagrant halt          # stop VM
-#   vagrant destroy -f    # delete VM
+#
+# Recommended: use start.sh instead of calling vagrant directly.
+# start.sh auto-detects the hypervisor and installs any required plugins.
+#
+#   ./start.sh            # bring VM up
+#   ./start.sh halt       # stop VM
+#   ./start.sh destroy    # destroy VM
+#   ./start.sh ssh        # open a shell inside the VM
+#
+# If you call vagrant directly the provider is auto-detected here too.
+# You can override it with: VAGRANT_DEFAULT_PROVIDER=virtualbox vagrant up
 
 REPO_URL  = "https://github.com/manedevo/carniceria-template.git"
 INSTALL   = "/opt/carniceria-template"
@@ -13,24 +17,94 @@ VM_MEMORY = 2048
 VM_CPUS   = 2
 APP_PORT  = 3000   # forwarded to host as 8080
 
+# ── Auto-detect hypervisor ────────────────────────────────────────────────────
+def detect_provider
+  # Honour explicit override
+  return ENV["VAGRANT_DEFAULT_PROVIDER"] if ENV["VAGRANT_DEFAULT_PROVIDER"] && !ENV["VAGRANT_DEFAULT_PROVIDER"].empty?
+
+  # macOS: prefer VMware Fusion
+  if RUBY_PLATFORM =~ /darwin/
+    fusion_app = "/Applications/VMware Fusion.app"
+    return "vmware_fusion" if File.directory?(fusion_app) || system("which vmrun > /dev/null 2>&1")
+    return "virtualbox"    if system("which VBoxManage > /dev/null 2>&1")
+  end
+
+  # Linux / Windows: prefer VMware Workstation
+  vmrun_paths = [
+    "/usr/bin/vmrun",
+    "/usr/local/bin/vmrun",
+    "C:/Program Files (x86)/VMware/VMware Workstation/vmrun.exe",
+    "C:/Program Files/VMware/VMware Workstation/vmrun.exe"
+  ]
+  vmrun_paths.each { |p| return "vmware_desktop" if File.exist?(p) }
+  return "vmware_desktop" if system("which vmrun > /dev/null 2>&1")
+
+  # VirtualBox fallback
+  vbox_paths = [
+    "/usr/bin/VBoxManage",
+    "C:/Program Files/Oracle/VirtualBox/VBoxManage.exe"
+  ]
+  vbox_paths.each { |p| return "virtualbox" if File.exist?(p) }
+  return "virtualbox" if system("which VBoxManage > /dev/null 2>&1")
+
+  abort "\n[ERROR] No supported hypervisor found.\n        Install VirtualBox or VMware Workstation/Fusion.\n"
+end
+
+PROVIDER = detect_provider
+puts "[INFO]  Hypervisor: #{PROVIDER}"
+
+# ── Auto-install VMware plugin if needed ──────────────────────────────────────
+if PROVIDER.start_with?("vmware")
+  unless Vagrant.has_plugin?("vagrant-vmware-desktop")
+    puts "[INFO]  Installing vagrant-vmware-desktop plugin..."
+    system("vagrant plugin install vagrant-vmware-desktop") or
+      abort "[ERROR] Failed to install vagrant-vmware-desktop plugin."
+    puts "[INFO]  Plugin installed. Re-run: vagrant up"
+    exit 0
+  end
+end
+
+# ── VM definition ─────────────────────────────────────────────────────────────
 Vagrant.configure("2") do |config|
 
-  config.vm.box              = "ubuntu/jammy64"   # Ubuntu 22.04 LTS
+  # bento/ubuntu-22.04 is tested with VirtualBox, VMware Workstation and VMware Fusion
+  config.vm.box              = "bento/ubuntu-22.04"
   config.vm.box_check_update = false
+  config.vm.hostname         = "carniceria-artesanal"
 
   config.vm.network "forwarded_port",
     guest: APP_PORT, host: 8080, host_ip: "127.0.0.1", auto_correct: true
 
+  # ── VirtualBox ──────────────────────────────────────────────────────────────
   config.vm.provider "virtualbox" do |vb|
     vb.name   = "carniceria-artesanal"
     vb.memory = VM_MEMORY
     vb.cpus   = VM_CPUS
     vb.gui    = false
     vb.customize ["modifyvm", :id, "--natdnshostresolver1", "on"]
+    vb.customize ["modifyvm", :id, "--natdnsproxy1",        "on"]
   end
 
+  # ── VMware Workstation (Windows / Linux) ────────────────────────────────────
+  config.vm.provider "vmware_desktop" do |vmw|
+    vmw.vmx["displayName"] = "carniceria-artesanal"
+    vmw.memory             = VM_MEMORY
+    vmw.cpus               = VM_CPUS
+    vmw.gui                = false
+  end
+
+  # ── VMware Fusion (macOS) ───────────────────────────────────────────────────
+  config.vm.provider "vmware_fusion" do |vmw|
+    vmw.vmx["displayName"] = "carniceria-artesanal"
+    vmw.memory             = VM_MEMORY
+    vmw.cpus               = VM_CPUS
+    vmw.gui                = false
+  end
+
+  # ── Provisioning ────────────────────────────────────────────────────────────
   config.vm.provision "shell", inline: <<-SHELL
     set -euo pipefail
+    export DEBIAN_FRONTEND=noninteractive
 
     # ── 1. Locale & timezone ────────────────────────────────────────────────
     locale-gen en_US.UTF-8
@@ -38,7 +112,6 @@ Vagrant.configure("2") do |config|
     timedatectl set-timezone Europe/Madrid
 
     # ── 2. System update ────────────────────────────────────────────────────
-    export DEBIAN_FRONTEND=noninteractive
     apt-get update -q
     apt-get upgrade -yq
 
@@ -64,50 +137,72 @@ Vagrant.configure("2") do |config|
 
     # ── 5. Add vagrant user to docker group ─────────────────────────────────
     usermod -aG docker vagrant
+    # Apply group immediately for the rest of this script (no re-login needed)
+    newgrp docker || true
 
     # ── 6. Clone or update repository ───────────────────────────────────────
     if [[ -d "#{INSTALL}/.git" ]]; then
+      echo "[INFO] Repository found — updating..."
       cd "#{INSTALL}"
       git fetch origin
-      git reset --hard origin/main
+      git reset --hard origin/master
     else
+      echo "[INFO] Cloning repository into #{INSTALL}..."
       git clone "#{REPO_URL}" "#{INSTALL}"
     fi
 
     # ── 7. Generate .env ────────────────────────────────────────────────────
     ENV_FILE="#{INSTALL}/.env"
     if [[ ! -f "${ENV_FILE}" ]]; then
-      DB_PASS=$(openssl rand -hex 20)
+      echo "[INFO] Generating .env..."
+      DB_PASS=$(openssl rand -hex 24)
+      DB_ROOT_PASS=$(openssl rand -hex 24)
       cat > "${ENV_FILE}" <<EOF
+# Auto-generated by Vagrantfile on $(date -u +"%Y-%m-%d %H:%M UTC")
 DB_HOST=db
 DB_PORT=3306
 DB_USER=carniceria
 DB_PASSWORD=${DB_PASS}
+DB_ROOT_PASSWORD=${DB_ROOT_PASS}
 DB_NAME=carniceria_db
 PORT=3000
 NODE_ENV=production
 EOF
       chmod 600 "${ENV_FILE}"
+      echo "[INFO] .env created (passwords auto-generated)."
+    else
+      echo "[WARN] .env already exists — skipping generation."
     fi
 
-    # ── 8. Start containers ─────────────────────────────────────────────────
+    # ── 8. Patch Dockerfile if it still uses npm ci ──────────────────────────
+    DOCKERFILE="#{INSTALL}/backend/Dockerfile"
+    if grep -q "npm ci" "${DOCKERFILE}" 2>/dev/null; then
+      echo "[INFO] Patching Dockerfile (npm ci → npm install --omit=dev)..."
+      sed -i 's/npm ci --only=production/npm install --omit=dev/' "${DOCKERFILE}"
+    fi
+
+    # ── 9. Pull images and start containers ─────────────────────────────────
     cd "#{INSTALL}"
-    docker compose pull --quiet
+    echo "[INFO] Pulling base images..."
+    docker compose pull --quiet || true
+    echo "[INFO] Building and starting containers..."
     docker compose up -d --build
 
-    # ── 9. Wait for healthy state ────────────────────────────────────────────
-    echo "Waiting for app to become healthy…"
+    # ── 10. Wait for healthy state ───────────────────────────────────────────
+    echo "[INFO] Waiting for app to become healthy..."
     for i in $(seq 1 30); do
-      STATUS=$(docker inspect --format='{{.State.Health.Status}}' \
-        $(docker compose ps -q app 2>/dev/null) 2>/dev/null || echo "")
+      APP_ID=$(docker compose ps -q app 2>/dev/null || echo "")
+      STATUS=""
+      [[ -n "${APP_ID}" ]] && STATUS=$(docker inspect --format='{{.State.Health.Status}}' "${APP_ID}" 2>/dev/null || echo "")
       [[ "${STATUS}" == "healthy" ]] && break
+      echo "[INFO] Attempt ${i}/30 — status: ${STATUS:-pending}..."
       sleep 4
     done
 
-    # ── 10. Summary ──────────────────────────────────────────────────────────
+    # ── 11. Summary ──────────────────────────────────────────────────────────
     echo ""
     echo "════════════════════════════════════════════"
-    echo "  Carnicería Artesanal — VM ready!"
+    echo "  Carniceria Artesanal — VM ready!"
     echo "  Open on your host: http://localhost:8080"
     echo "════════════════════════════════════════════"
     echo ""

@@ -1,16 +1,21 @@
 # Carnicería Artesanal — Aplicación Web Full-Stack
 
-Plataforma de pedidos lista para producción para una carnicería artesanal en Madrid. Los clientes navegan por el catálogo de productos en directo, construyen su carrito y envían pedidos a domicilio, todo desde una interfaz de una sola página sin dependencias externas ni frameworks pesados.
+Plataforma de pedidos lista para producción para una carnicería artesanal en Madrid. Los clientes navegan por el catálogo, construyen su carrito y envían pedidos a domicilio. Los clientes autenticados pueden consultar su historial de pedidos. Un panel de administración permite al propietario gestionar productos, stock, promociones y pedidos con control de acceso basado en roles.
 
-Desarrollado como proyecto personal de portafolio para demostrar desarrollo web de extremo a extremo: diseño de API REST, bases de datos relacionales, despliegue con Docker y JavaScript Vanilla limpio en el frontend.
+Desarrollado como proyecto personal de portafolio para demostrar desarrollo web de extremo a extremo: diseño de API REST, autenticación JWT (JSON Web Token), RBAC (Control de Acceso Basado en Roles), bases de datos relacionales, despliegue con Docker y JavaScript Vanilla limpio en el frontend.
 
 ---
 
 ## Qué hace
 
-- **Catálogo de productos** con filtro por categoría y búsqueda en tiempo real
+- **Catálogo de productos** con filtro por categoría, búsqueda en tiempo real y badges de promoción en vivo
 - **Carrito de compra** con añadir/eliminar y control de cantidades
 - **Formulario de pedido** con zona de entrega, horario y método de pago
+- **Autenticación** — registro e inicio de sesión de clientes mediante JWT
+- **Control de acceso por roles** — tres roles: `admin`, `ventas`, `cliente`
+- **Panel de administración** — gestión de productos (CRUD + stock), pedidos (flujo de estados) y promociones
+- **Motor de promociones** — descuentos por porcentaje o precio fijo, aplicables a toda la tienda, una categoría o productos concretos; reflejados en tiempo real en el escaparate
+- **Cuenta de cliente** — página de historial de pedidos para clientes autenticados
 - **API REST** (Node.js + Express) respaldada por MariaDB
 - **Documentación bilingüe** (inglés + español)
 - **Despliegue en un comando** con Docker Compose o Vagrant
@@ -19,17 +24,18 @@ Desarrollado como proyecto personal de portafolio para demostrar desarrollo web 
 
 ## Stack tecnológico
 
-| Capa        | Tecnología                              |
-|-------------|-----------------------------------------|
-| Runtime     | Node.js 20 LTS                          |
-| Framework   | Express 4                               |
-| Base datos  | MariaDB 11 (pool mysql2/promise)        |
-| Frontend    | JavaScript Vanilla (ES2020, sin build)  |
-| Estilos     | CSS puro (variables, CSS Grid)          |
-| Fuentes     | Google Fonts — Playfair Display + Inter |
-| Contenedor  | Docker + Docker Compose v2              |
-| Seguridad   | Helmet.js, consultas parametrizadas     |
-| VM dev      | Vagrant + VirtualBox / VMware (Ubuntu 22.04) |
+| Capa        | Tecnología                                        |
+|-------------|---------------------------------------------------|
+| Runtime     | Node.js 20 LTS                                    |
+| Framework   | Express 4                                         |
+| Base datos  | MariaDB 11 (pool mysql2/promise)                  |
+| Auth        | bcryptjs · jsonwebtoken · express-rate-limit      |
+| Frontend    | JavaScript Vanilla (ES2020, sin build)            |
+| Estilos     | CSS puro (variables, CSS Grid)                    |
+| Fuentes     | Google Fonts — Cormorant Garamond + Montserrat    |
+| Contenedor  | Docker + Docker Compose v2                        |
+| Seguridad   | Helmet.js, consultas parametrizadas, bcrypt coste 12 |
+| VM dev      | Vagrant + VirtualBox / VMware (Ubuntu 22.04)      |
 
 ---
 
@@ -38,37 +44,62 @@ Desarrollado como proyecto personal de portafolio para demostrar desarrollo web 
 ```
 carniceria-template/
 ├── backend/
-│   ├── index.js                  Punto de entrada Express
+│   ├── index.js                    Punto de entrada Express — registra todas las rutas
 │   ├── Dockerfile
 │   ├── package.json
 │   ├── database/
-│   │   └── schema.sql            Tablas + 30 productos de ejemplo
+│   │   └── schema.sql              5 tablas + 30 productos de ejemplo
+│   ├── scripts/
+│   │   └── create-admin.js         Herramienta CLI para crear el primer usuario admin
 │   └── src/
 │       ├── config/
-│       │   └── database.js       Pool de conexiones mysql2
+│       │   └── database.js         Pool de conexiones mysql2
+│       ├── middleware/
+│       │   ├── authenticate.js     Middleware de verificación JWT
+│       │   └── requireRole.js      Middleware de control de roles RBAC
 │       └── routes/
-│           ├── products.js       GET /api/products, /api/products/categories
-│           └── orders.js         POST /api/orders
-├── public/                       Servido como estáticos por Express
-│   ├── index.html
+│           ├── products.js         GET /api/products (público, incluye datos de promo)
+│           ├── orders.js           POST /api/orders (público, vincula user_id si hay sesión)
+│           ├── auth.js             POST /register, /login · GET /me
+│           ├── admin/
+│           │   ├── products.js     CRUD completo — solo admin
+│           │   ├── orders.js       Todos los pedidos — admin + ventas
+│           │   └── promotions.js   Gestión de promociones — solo admin
+│           └── user/
+│               └── orders.js       Historial del cliente — solo cliente autenticado
+├── public/                         Servido como estáticos por Express
+│   ├── index.html                  Tienda (banner promo, badges de stock, nav con auth)
+│   ├── login.html
+│   ├── registro.html
+│   ├── mi-cuenta.html              Historial de pedidos del cliente
+│   ├── admin/
+│   │   ├── index.html              Dashboard (estadísticas + últimos pedidos)
+│   │   ├── productos.html          Tabla de productos con edición inline
+│   │   ├── pedidos.html            Lista de pedidos con filtros y selector de estado
+│   │   └── promociones.html        Creador de promociones
 │   └── assets/
-│       ├── css/main.css
-│       ├── js/main.js
-│       └── img/                  Deposita aquí las imágenes de productos
+│       ├── css/
+│       │   ├── main.css            Estilos de la tienda
+│       │   └── admin.css           Estilos del panel admin
+│       ├── js/
+│       │   ├── main.js             Lógica de la tienda (carrito, productos, promos)
+│       │   ├── auth.js             Helpers JWT (localStorage, apiFetch, requireAuth)
+│       │   └── admin.js            Lógica del panel admin (todas las páginas)
+│       └── img_realistas/          Imágenes de productos
 ├── deployment/
-│   ├── setup.sh                  Instalador automatizado para VPS Linux
+│   ├── setup/setup_sh/setup.sh     Instalador automatizado para VPS Linux
 │   └── Vm_tests/
-│       ├── Vagrantfile           VM de pruebas local (detecta VirtualBox / VMware)
+│       ├── Vagrantfile             VM de pruebas local (detecta VirtualBox / VMware)
 │       └── windows/
-│           ├── launch.bat        Lanzador con doble-click para Windows (sin requisitos)
-│           └── launch.ps1        Lógica PowerShell (instala todo automáticamente)
-├── setup/
-│   ├── setup_sh/
-│   │   └── setup.sh              Instalador inteligente (multi-distro, Docker auto)
-│   └── undo_limpieza_total/
-│       └── limpieza_total.sh     Limpieza completa para máquinas de prueba
-├── docs/                         Documentación en inglés
-├── docs/es/                      Documentación en español
+│           ├── launch.bat          Lanzador con doble-click para Windows (sin requisitos)
+│           └── launch.ps1          Lógica PowerShell (instala todo automáticamente)
+├── docs/                           Documentación en inglés
+│   ├── architecture.md
+│   └── deployment.md
+├── docs/es/                        Documentación en español
+│   ├── arquitectura.md
+│   └── despliegue.md
+├── tasks/                          Planificación de desarrollo (excluido por .gitignore)
 ├── docker-compose.yml
 ├── .env.example
 └── .gitignore
@@ -83,21 +114,42 @@ carniceria-template/
 ```bash
 git clone https://github.com/manedevo/carniceria-template.git
 cd carniceria-template
-cp .env.example .env        # edita al menos DB_PASSWORD
+cp .env.example .env
+```
+
+Edita `.env`: establece `DB_PASSWORD` y genera un `JWT_SECRET` seguro:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+# pega el resultado como JWT_SECRET en .env
+```
+
+Luego arranca:
+
+```bash
 docker compose up -d --build
 ```
 
 Abre [http://localhost:3000](http://localhost:3000).
 
-El esquema y los datos de ejemplo se aplican automáticamente en el primer arranque.
+### Crear el primer usuario admin
+
+Con los contenedores en marcha:
+
+```bash
+docker compose exec app \
+  node scripts/create-admin.js admin@carniceria.es MiContraseña123 "Nombre Admin"
+```
+
+Luego inicia sesión en [http://localhost:3000/login.html](http://localhost:3000/login.html).
 
 ---
 
 ## Inicio rápido (Vagrant — VM local)
 
-¿No tienes Docker instalado? Levanta una VM Ubuntu completa.
+¿Sin Docker? Levanta una VM Ubuntu completa.
 
-**En Windows** — haz doble-click en `deployment/Vm_tests/windows/launch.bat`. Instala todo desde cero (Chocolatey, VirtualBox o detecta VMware, Vagrant, plugins) y arranca la VM. No se necesita nada instalado previamente.
+**En Windows** — haz doble-click en `deployment/Vm_tests/windows/launch.bat`. Instala todo desde cero y arranca la VM. Sin requisitos previos.
 
 **En Linux / macOS** — con Vagrant ya instalado:
 
@@ -106,9 +158,7 @@ cd deployment/Vm_tests
 vagrant up
 ```
 
-El Vagrantfile **detecta automáticamente** el hipervisor instalado (VMware Fusion, VMware Workstation o VirtualBox) e instala el plugin de VMware para Vagrant si es necesario. No hace falta ningún flag ni paso manual.
-
-El primer arranque tarda 15–20 minutos (descarga la box, instala Docker y construye la app). La app estará disponible en [http://localhost:8080](http://localhost:8080) desde tu máquina.
+El Vagrantfile detecta automáticamente el hipervisor. El primer arranque tarda 15–20 minutos. La app estará en [http://localhost:8080](http://localhost:8080).
 
 ---
 
@@ -116,40 +166,84 @@ El primer arranque tarda 15–20 minutos (descarga la box, instala Docker y cons
 
 Copia `.env.example` a `.env` y ajusta los valores:
 
-| Variable      | Por defecto     | Descripción                              |
-|---------------|-----------------|------------------------------------------|
-| `DB_HOST`     | `db`            | Host de MariaDB (usa `db` con Docker)    |
-| `DB_PORT`     | `3306`          | Puerto de MariaDB                        |
-| `DB_USER`     | `carniceria`    | Usuario de la base de datos              |
-| `DB_PASSWORD` | _(requerido)_   | Contraseña de la base de datos           |
-| `DB_NAME`     | `carniceria_db` | Nombre de la base de datos               |
-| `PORT`        | `3000`          | Puerto HTTP en el que escucha la app     |
-| `NODE_ENV`    | `production`    | Entorno de Node                          |
+| Variable          | Por defecto     | Descripción                                              |
+|-------------------|-----------------|----------------------------------------------------------|
+| `DB_HOST`         | `db`            | Host de MariaDB (usa `db` con Docker)                    |
+| `DB_PORT`         | `3306`          | Puerto de MariaDB                                        |
+| `DB_USER`         | `carniceria`    | Usuario de la base de datos                              |
+| `DB_PASSWORD`     | _(requerido)_   | Contraseña de la base de datos                           |
+| `DB_NAME`         | `carniceria_db` | Nombre de la base de datos                               |
+| `PORT`            | `3000`          | Puerto HTTP en el que escucha la app                     |
+| `NODE_ENV`        | `production`    | Entorno de Node                                          |
+| `JWT_SECRET`      | _(requerido)_   | Secreto aleatorio de 64 bytes — **generar, nunca reutilizar** |
+| `JWT_EXPIRES_IN`  | `8h`            | Duración del token                                       |
+| `BCRYPT_ROUNDS`   | `12`            | Factor de trabajo bcrypt (mayor = más lento = más seguro)|
 
 ---
 
 ## Referencia de la API
 
-### Productos
+### Endpoints públicos
 
-| Método | Endpoint                   | Descripción                                |
-|--------|----------------------------|--------------------------------------------|
-| GET    | `/api/products`            | Lista de productos activos (filtrable)     |
-| GET    | `/api/products?category=X` | Filtrar por categoría                      |
-| GET    | `/api/products?search=X`   | Búsqueda en nombre y nota del producto     |
-| GET    | `/api/products/categories` | Categorías distintas activas               |
+| Método | Endpoint                    | Descripción                                              |
+|--------|-----------------------------|----------------------------------------------------------|
+| GET    | `/api/products`             | Productos activos con campos de promo opcionales         |
+| GET    | `/api/products?category=X`  | Filtrar por categoría                                    |
+| GET    | `/api/products?search=X`    | Búsqueda en nombre y nota                                |
+| GET    | `/api/products/categories`  | Categorías distintas activas                             |
+| POST   | `/api/orders`               | Crear pedido (vincula user_id si hay JWT en cabecera)    |
 
-### Pedidos
+### Endpoints de autenticación
 
-| Método | Endpoint      | Descripción           |
-|--------|---------------|-----------------------|
-| POST   | `/api/orders` | Crear un nuevo pedido |
+| Método | Endpoint              | Descripción                        |
+|--------|-----------------------|------------------------------------|
+| POST   | `/api/auth/register`  | Registrar cuenta de cliente        |
+| POST   | `/api/auth/login`     | Iniciar sesión — devuelve JWT      |
+| GET    | `/api/auth/me`        | Datos del usuario actual (requiere JWT) |
+
+### Endpoints admin — requieren `Authorization: Bearer <token>`
+
+| Método | Endpoint                          | Roles             |
+|--------|-----------------------------------|-------------------|
+| GET    | `/api/admin/products`             | admin             |
+| POST   | `/api/admin/products`             | admin             |
+| PUT    | `/api/admin/products/:id`         | admin             |
+| DELETE | `/api/admin/products/:id`         | admin             |
+| PATCH  | `/api/admin/products/:id/stock`   | admin             |
+| GET    | `/api/admin/orders`               | admin, ventas   |
+| GET    | `/api/admin/orders/:id`           | admin, ventas   |
+| PUT    | `/api/admin/orders/:id/status`    | admin             |
+| GET    | `/api/admin/promotions`           | admin             |
+| POST   | `/api/admin/promotions`           | admin             |
+| PUT    | `/api/admin/promotions/:id`       | admin             |
+| DELETE | `/api/admin/promotions/:id`       | admin             |
+
+### Endpoints de cliente — requieren JWT con rol `cliente`
+
+| Método | Endpoint               | Descripción                               |
+|--------|------------------------|-------------------------------------------|
+| GET    | `/api/user/orders`     | Pedidos del cliente autenticado           |
+| GET    | `/api/user/orders/:id` | Detalle de un pedido (verifica propiedad) |
+
+---
+
+## Matriz de roles (RBAC)
+
+| Funcionalidad                       | admin | ventas | cliente | anónimo |
+|-------------------------------------|-------|----------|---------|---------|
+| Navegar catálogo / añadir al carrito | ✓     | ✓        | ✓       | ✓       |
+| Realizar un pedido                  | ✓     | ✓        | ✓       | ✓       |
+| Ver historial propio                | ✓     | ✓        | ✓       | —       |
+| Ver todos los pedidos               | ✓     | ✓        | —       | —       |
+| Cambiar estado de pedido            | ✓     | —        | —       | —       |
+| Gestionar productos / stock         | ✓     | —        | —       | —       |
+| Gestionar promociones               | ✓     | —        | —       | —       |
 
 ---
 
 ## Imágenes de productos
 
-Deposita archivos `.jpg` o `.webp` en `public/assets/img/`. El nombre del archivo debe coincidir con la columna `image_url` en la tabla `products`. Los productos sin imagen usan un fondo neutro.
+Deposita archivos `.jpg` o `.webp` en `public/assets/img_realistas/`. El nombre del archivo debe coincidir con la columna `image_url` en la tabla `products`. Los productos sin imagen usan un fondo neutro.
 
 ---
 
@@ -158,19 +252,25 @@ Deposita archivos `.jpg` o `.webp` en `public/assets/img/`. El nombre del archiv
 Consulta [docs/es/despliegue.md](docs/es/despliegue.md) para:
 
 - Ejecutar el script de instalación automatizado en un VPS
-- Configuración de proxy inverso Nginx
-- SSL con Let's Encrypt y Certbot
+- Configuración de proxy inverso Nginx + SSL con Let's Encrypt
+- Creación del usuario admin en el primer arranque
 - PM2 (opción sin Docker)
-- Reglas de firewall
+- Reglas de cortafuegos y cron de copias de seguridad
 
 ---
 
 ## Seguridad
 
-- **Inyección SQL** — todas las consultas usan marcadores de posición `?` vía `mysql2`
-- **XSS** — todos los datos del usuario pasan por `escHtml()` antes de insertarse en el DOM
-- **Cabeceras HTTP** — `helmet()` establece `X-Frame-Options`, `X-Content-Type-Options`, etc.
-- **Secretos** — las credenciales están en `.env`, nunca en el repositorio (`.gitignore`)
+| Medida                     | Implementación                                                       |
+|----------------------------|----------------------------------------------------------------------|
+| Hash de contraseñas        | bcrypt coste 12 — nunca MD5 ni SHA plano                             |
+| Sesiones sin estado        | JWT firmado con secreto aleatorio de 64 bytes, expira en 8 h        |
+| Protección fuerza bruta    | `express-rate-limit`: 10 intentos de login / 15 min por IP          |
+| Inyección SQL              | Todos los parámetros usan marcadores `?` vía `mysql2`               |
+| XSS                        | `escHtml()` aplicado a cada valor del servidor antes de insertar en el DOM |
+| Cabeceras de seguridad     | `helmet()` — X-Frame-Options, X-Content-Type-Options, HSTS, etc.   |
+| Secretos                   | `.env` nunca en el repositorio (`.gitignore`)                       |
+| Rutas admin                | JWT verificado en el servidor en cada petición; rol comprobado por ruta |
 
 ---
 

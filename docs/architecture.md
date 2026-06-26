@@ -7,15 +7,28 @@ Carnicería Artesanal is a three-tier web application: a static frontend served 
 ```
 Browser
   │
-  │  GET /  →  index.html (static)
-  │  GET /assets/**  →  CSS, JS, images (static)
-  │  GET /api/**     →  JSON API
+  │  GET /          →  index.html (static)
+  │  GET /admin/**  →  admin HTML pages (static, JWT-guarded client-side)
+  │  GET /assets/** →  CSS, JS, images (static)
+  │  GET /api/**    →  JSON API
   ▼
 Express (Node.js 20)
-  ├── helmet()          security headers
-  ├── express.static()  serves public/
-  ├── /api/products     products router
-  └── /api/orders       orders router
+  ├── helmet()             security headers
+  ├── cors()               CORS policy
+  ├── express.json()       body parser
+  ├── express.static()     serves public/
+  │
+  ├── /api/products        public products router (+ promo data)
+  ├── /api/orders          public orders router  (links user_id if JWT present)
+  ├── /api/auth            register · login · me
+  │
+  ├── authenticate()  ──── JWT middleware (applied to all routes below)
+  ├── requireRole()   ──── RBAC middleware
+  │
+  ├── /api/admin/products    admin only
+  ├── /api/admin/orders      admin + ventas
+  ├── /api/admin/promotions  admin only
+  └── /api/user/orders       cliente only
         │
         ▼
   mysql2 connection pool
@@ -38,84 +51,151 @@ Registers middleware in order:
 2. `cors()` — permissive in development; tighten the `origin` option for production
 3. `express.json()` — parses request bodies
 4. `express.static(PUBLIC_DIR)` — serves everything under `public/`
-5. API routes
-6. Catch-all `*` — returns `index.html` for client-side navigation
+5. Public API routes (products, orders, auth)
+6. Protected API routes (admin/*, user/*)
+7. Catch-all `*` — returns `index.html` for client-side navigation
 
 ### Database — `backend/src/config/database.js`
 
 Uses `mysql2/promise` in pool mode (up to 10 concurrent connections). All credentials come from environment variables; the file has no hardcoded secrets.
 
+### Authentication middleware — `backend/src/middleware/authenticate.js`
+
+Reads the `Authorization: Bearer <token>` header, verifies the JWT (JSON Web Token) signature against `JWT_SECRET`, and attaches the decoded payload (`id`, `email`, `role`, `name`) to `req.user`. Returns HTTP 401 if the token is absent or invalid.
+
+### RBAC middleware — `backend/src/middleware/requireRole.js`
+
+Accepts a variadic list of allowed roles. Returns HTTP 403 if `req.user.role` is not in the list. Applied after `authenticate`.
+
 ### Products route — `GET /api/products`
 
-Builds a dynamic `SELECT` query:
+Builds a dynamic `SELECT` query with optional `category` and `search` filters. After fetching the product rows, enriches each one with the highest-priority active promotion that applies to it (product-specific > category > all), adding `promo_name`, `promo_type`, `promo_value`, `promo_price`, and `promo_applies_to` fields. All parameters use `?` placeholders — never string interpolation.
 
-- Base filter: `active = 1`
-- Optional `category` filter: appended with `AND category = ?`
-- Optional `search` filter: `AND (name LIKE ? OR note LIKE ?)`
-- Final `ORDER BY FIELD(category, …), name` guarantees a deterministic display order matching the butcher's own taxonomy (Ternera → Cerdo → Pollo → Cordero → Embutidos)
-
-All parameters are passed as `?` placeholders — never interpolated into the SQL string.
+> **Note:** promotion lookup currently runs one query per product (N+1 pattern). Acceptable for the current catalogue size; a single JOIN query is the recommended optimisation for larger catalogues.
 
 ### Orders route — `POST /api/orders`
 
-Validates that the required fields are present, calculates the order total server-side (never trusting the client total), serialises `items` as JSON, and inserts a single row.
+Validates required fields, calculates total server-side, and inserts the order. If a valid JWT is present in the `Authorization` header the order is linked to that user via `user_id`; anonymous orders set `user_id = NULL` for backwards compatibility.
+
+### Admin routes
+
+All routes under `/api/admin/*` apply `authenticate → requireRole(...)` as router-level middleware. Individual routes may apply a stricter `requireRole` — for example, `PUT /api/admin/orders/:id/status` requires `admin` even though the router allows `admin` and `ventas`.
 
 ---
 
 ## Frontend
 
-A single HTML file loads one CSS file and one JS file. No bundler, no transpiler, no `node_modules` on the client.
+No bundler, no transpiler, no `node_modules` on the client. Three JS files cover the entire UI:
+
+### `public/assets/js/auth.js`
+
+Loaded on every page. Manages the JWT lifecycle in `localStorage`:
+
+- `setToken` / `getToken` / `clearToken`
+- `getUser()` — decodes the JWT payload and checks expiry
+- `apiFetch()` — wrapper around `fetch` that automatically injects the `Authorization` header and redirects to `/login.html` on HTTP 401
+- `requireAuth(roles)` — guards admin/account pages client-side; redirects if the token is absent or the role is not in the allowed list
+- `updateAuthNav()` — updates the storefront "MI CUENTA" nav link to show the user's name or point to the admin panel
 
 ### `public/assets/js/main.js`
 
-Key design decisions:
+Storefront logic:
 
-- **`escHtml()`** — every piece of server-returned data is escaped before DOM insertion. No `innerHTML` with raw API values anywhere.
-- **`Map` for cart state** — keyed by product ID; O(1) lookups and clean iteration with `forEach`.
-- **Event delegation** — a single listener on `#productGrid` handles all "add to cart" clicks; likewise for cart quantity controls. No listener-per-element.
-- **Debounced search** — 320 ms delay on the `input` event prevents a flood of API calls while the user is typing.
-- **`fetch` + `async/await`** — no third-party HTTP library needed.
-- **`Intl.NumberFormat`** — locale-aware euro formatting (`es-ES`, EUR) without a library.
+- **`escHtml()`** — every piece of server-returned data is escaped before DOM insertion. No `innerHTML` with raw API values.
+- **`Map` for cart state** — keyed by product ID; O(1) lookups.
+- **Event delegation** — single listeners on `#productGrid` and cart containers.
+- **Debounced search** — 320 ms delay prevents API flooding.
+- **Promo rendering** — reads `promo_name`, `promo_price`, `promo_applies_to` from product data; renders discount badges, strikethrough original price, and a top banner (global promos only; category/product promos show a generic message).
+- **Stock indicator** — renders "Quedan X kg/pieza" when `stock_enabled = 1`.
+
+### `public/assets/js/admin.js`
+
+Loaded only on admin pages. Provides:
+
+- Table rendering for products, orders, and promotions
+- Inline editing of price and stock
+- Modal open/close helpers
+- `loadDashboard()` — role-aware: fetches orders for all admin roles; fetches products and promotions only for `admin` (ventas sees those cards removed)
+- Order status update and expand/collapse row details
 
 ### Product images
 
-Images live in `public/assets/img/`. The `image_url` column in `products` stores only the filename (e.g. `solomillo.jpg`). The frontend prepends `/assets/img/` to form the URL, so the image is served by `express.static` like any other asset. Products with a `NULL` `image_url` fall back to a CSS background colour.
+Images live in `public/assets/img_realistas/`. The `image_url` column in `products` stores only the filename. The frontend prepends `/assets/img_realistas/` to form the URL. Products with `image_url = NULL` fall back to a CSS background colour.
 
 ---
 
 ## Database schema
 
-Two tables:
+Five tables (creation order respects foreign key dependencies):
+
+**`users`**
+
+| Column          | Type                               | Notes                        |
+|-----------------|------------------------------------|------------------------------|
+| `id`            | INT UNSIGNED PK                    | Auto-increment               |
+| `email`         | VARCHAR(255) UNIQUE                |                              |
+| `password_hash` | VARCHAR(255)                       | bcrypt, cost 12              |
+| `role`          | ENUM(admin, ventas, cliente)     | Default: cliente             |
+| `name`          | VARCHAR(120)                       |                              |
+| `phone`         | VARCHAR(30) NULL                   |                              |
+| `active`        | TINYINT(1)                         | Soft-delete flag             |
+| `created_at`    | TIMESTAMP                          |                              |
 
 **`products`**
 
-| Column      | Type                  | Notes                            |
-|-------------|-----------------------|----------------------------------|
-| `id`        | INT UNSIGNED PK       | Auto-increment                   |
-| `name`      | VARCHAR(120)          | Display name                     |
-| `category`  | ENUM                  | Ternera / Cerdo / Pollo / Cordero / Embutidos |
-| `price`     | DECIMAL(8,2)          | EUR per kg                       |
-| `note`      | VARCHAR(255) NULL     | Short description                |
-| `image_url` | VARCHAR(255) NULL     | Filename in `public/assets/img/` |
-| `active`    | TINYINT(1)            | Soft-delete flag                 |
-| `created_at`| TIMESTAMP             | Auto-set on insert               |
+| Column          | Type                               | Notes                              |
+|-----------------|------------------------------------|------------------------------------|
+| `id`            | INT UNSIGNED PK                    | Auto-increment                     |
+| `name`          | VARCHAR(120)                       |                                    |
+| `category`      | ENUM(Ternera…Embutidos)            |                                    |
+| `price`         | DECIMAL(8,2)                       | EUR per kg or per unit             |
+| `unit_type`     | ENUM(kg, pieza)                    | Default: kg                        |
+| `stock_qty`     | DECIMAL(10,3) NULL                 | NULL = no limit defined            |
+| `stock_enabled` | TINYINT(1)                         | Show stock to customers when 1     |
+| `note`          | VARCHAR(255) NULL                  | Short description                  |
+| `image_url`     | VARCHAR(255) NULL                  | Filename in `img_realistas/`       |
+| `active`        | TINYINT(1)                         | Soft-delete flag                   |
+| `created_at`    | TIMESTAMP                          |                                    |
 
 **`orders`**
 
-| Column           | Type                  | Notes                              |
-|------------------|-----------------------|------------------------------------|
-| `id`             | INT UNSIGNED PK       | Auto-increment                     |
-| `customer_name`  | VARCHAR(120)          |                                    |
-| `phone`          | VARCHAR(30)           |                                    |
-| `address`        | TEXT                  |                                    |
-| `zone`           | VARCHAR(80)           | Delivery zone name                 |
-| `time_slot`      | VARCHAR(60)           | Human-readable time window         |
-| `payment_method` | VARCHAR(40)           | Efectivo / Bizum / Tarjeta / etc.  |
-| `items`          | JSON                  | Array of `{id, name, price, qty}`  |
-| `total`          | DECIMAL(10,2)         | Calculated server-side             |
-| `status`         | ENUM                  | pendiente → confirmado → entregado |
-| `created_at`     | TIMESTAMP             |                                    |
-| `updated_at`     | TIMESTAMP             | Auto-updated on change             |
+| Column           | Type                               | Notes                              |
+|------------------|------------------------------------|------------------------------------|
+| `id`             | INT UNSIGNED PK                    | Auto-increment                     |
+| `user_id`        | INT UNSIGNED NULL FK → users       | NULL = anonymous order             |
+| `customer_name`  | VARCHAR(120)                       |                                    |
+| `phone`          | VARCHAR(30)                        |                                    |
+| `address`        | TEXT                               |                                    |
+| `zone`           | VARCHAR(80)                        | Delivery zone name                 |
+| `time_slot`      | VARCHAR(60)                        | Human-readable time window         |
+| `payment_method` | VARCHAR(40)                        |                                    |
+| `items`          | JSON                               | Array of {id, name, price, qty}    |
+| `total`          | DECIMAL(10,2)                      | Calculated server-side             |
+| `status`         | ENUM(pendiente…cancelado)          | Default: pendiente                 |
+| `created_at`     | TIMESTAMP                          |                                    |
+| `updated_at`     | TIMESTAMP                          | Auto-updated on change             |
+
+**`promotions`**
+
+| Column       | Type                               | Notes                              |
+|--------------|------------------------------------|------------------------------------|
+| `id`         | INT UNSIGNED PK                    | Auto-increment                     |
+| `name`       | VARCHAR(120)                       | Display name                       |
+| `type`       | ENUM(porcentaje, precio_fijo)      |                                    |
+| `value`      | DECIMAL(8,2)                       | 15 = 15 % or 15 EUR off            |
+| `applies_to` | ENUM(todos, categoria, producto)   | Scope of the discount              |
+| `category`   | VARCHAR(80) NULL                   | Used when applies_to = categoria   |
+| `active`     | TINYINT(1)                         | Only active promos apply           |
+| `starts_at`  | TIMESTAMP NULL                     | NULL = no start restriction        |
+| `ends_at`    | TIMESTAMP NULL                     | NULL = no expiry                   |
+| `created_at` | TIMESTAMP                          |                                    |
+
+**`promotion_products`** (junction table)
+
+| Column         | Type             | Notes                              |
+|----------------|------------------|------------------------------------|
+| `promotion_id` | INT UNSIGNED FK  | → promotions(id) CASCADE DELETE    |
+| `product_id`   | INT UNSIGNED FK  | → products(id) CASCADE DELETE      |
 
 ---
 
@@ -130,12 +210,12 @@ Both services share the `carniceria_net` bridge network. Neither container runs 
 
 ---
 
-## Extending the project
+## Security model
 
-Common next steps people ask about:
+The application follows a defence-in-depth approach:
 
-- **Admin panel** — add a `POST /api/products` route and a separate admin HTML page protected by a simple bearer token or session cookie.
-- **Order status updates** — the `status` ENUM is already in the schema; wire up a `PATCH /api/orders/:id` route.
-- **WebSockets / SSE** — push order notifications to an admin dashboard in real time without polling.
-- **Authentication** — `express-session` + `bcrypt` is the straightforward path; JWT if you want stateless API tokens.
-- **Rate limiting** — `express-rate-limit` on the `/api/orders` route to prevent spam.
+1. **Transport** — HTTPS enforced via Nginx in production; HTTP Strict Transport Security header set by `helmet`.
+2. **Authentication** — Passwords hashed with bcrypt (cost 12). Login rate-limited to 10 attempts / 15 min per IP.
+3. **Authorisation** — JWT verified on every protected request server-side; role checked per route. Client-side `requireAuth` provides UX-only gating (not a security boundary).
+4. **Input handling** — All SQL parameters use `?` placeholders. All HTML output escapes via `escHtml()`.
+5. **Secrets** — All credentials in `.env` (`.gitignore` enforced). `JWT_SECRET` must be 64 random bytes.

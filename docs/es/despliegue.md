@@ -10,7 +10,17 @@ cd carniceria-template
 cp .env.example .env
 ```
 
-Edita `.env` y establece como mínimo una `DB_PASSWORD` fuerte. Después:
+Edita `.env`:
+
+1. Establece una `DB_PASSWORD` fuerte.
+2. Genera un `JWT_SECRET` (JSON Web Token Secret) seguro — el valor de ejemplo NO es seguro para producción:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+# pega el resultado como JWT_SECRET= en .env
+```
+
+Luego arranca:
 
 ```bash
 docker compose up -d --build
@@ -24,6 +34,17 @@ docker compose logs -f app
 ```
 
 Abre `http://<ip-de-tu-servidor>:3000`.
+
+### Crear el primer usuario admin
+
+El esquema no incluye ningún usuario. Ejecuta el script de configuración una vez con los contenedores en marcha:
+
+```bash
+docker compose exec app \
+  node scripts/create-admin.js admin@tudominio.es MiContraseña123 "Nombre Admin"
+```
+
+Luego inicia sesión en `/login.html`. El script aplica bcrypt a la contraseña con el coste configurado e inserta la fila — rechazará ejecutarse si el correo ya existe.
 
 ### Actualizar
 
@@ -41,15 +62,17 @@ El esquema de la base de datos solo se aplica una vez (en el primer arranque), p
 Para un VPS con Ubuntu 22.04 / 24.04 o RHEL/Fedora recién instalado. El script instala Docker, clona el repositorio, genera un `.env` e inicia los contenedores.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/manedevo/carniceria-template/master/deployment/setup.sh \
+curl -fsSL https://raw.githubusercontent.com/manedevo/carniceria-template/master/deployment/setup/setup_sh/setup.sh \
   | sudo bash
 ```
 
 O si ya tienes el repositorio:
 
 ```bash
-sudo bash deployment/setup.sh
+sudo bash deployment/setup/setup_sh/setup.sh
 ```
+
+El script genera todas las credenciales automáticamente — `DB_PASSWORD`, `DB_ROOT_PASSWORD` y `JWT_SECRET` (hex de 64 bytes). No es necesario editar el `.env` manualmente. Al terminar, solo hay que crear el usuario admin como se describe en la Opción A.
 
 El script es idempotente: ejecutarlo de nuevo en una instalación existente descargará el último código y reiniciará los contenedores sin perder datos.
 
@@ -189,7 +212,15 @@ mysql_secure_installation
 mysql -u root -p < /opt/carniceria-template/backend/database/schema.sql
 ```
 
-### 3. Instalar dependencias y arrancar con PM2
+### 3. Configurar el entorno
+
+```bash
+cp .env.example .env
+# establece DB_HOST=localhost, DB_PASSWORD y un JWT_SECRET generado
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+### 4. Instalar dependencias y arrancar con PM2
 
 ```bash
 cd /opt/carniceria-template/backend
@@ -198,6 +229,13 @@ npm install -g pm2
 pm2 start index.js --name carniceria
 pm2 save
 pm2 startup   # sigue el comando impreso para habilitar el inicio automático
+```
+
+### 5. Crear el primer usuario admin
+
+```bash
+cd /opt/carniceria-template/backend
+node scripts/create-admin.js admin@tudominio.es MiContraseña123 "Nombre Admin"
 ```
 
 ---

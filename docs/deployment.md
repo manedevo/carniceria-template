@@ -10,7 +10,17 @@ cd carniceria-template
 cp .env.example .env
 ```
 
-Edit `.env` and set at minimum a strong `DB_PASSWORD`. Then:
+Edit `.env`:
+
+1. Set a strong `DB_PASSWORD`.
+2. Generate a secure `JWT_SECRET` (required — the placeholder value is not safe):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+# paste the output as JWT_SECRET= in .env
+```
+
+Then start:
 
 ```bash
 docker compose up -d --build
@@ -24,6 +34,17 @@ docker compose logs -f app
 ```
 
 Open `http://<your-server-ip>:3000`.
+
+### Create the first admin user
+
+The schema ships without any users. Run the setup script once after the containers are up:
+
+```bash
+docker compose exec app \
+  node scripts/create-admin.js admin@yourdomain.com MyStr0ngPass "Admin Name"
+```
+
+You can then log in at `/login.html`. The script hashes the password with bcrypt at the configured cost and inserts the row — it will refuse to run if the email already exists.
 
 ### Updating
 
@@ -41,15 +62,17 @@ The database schema is only applied once (on first boot), so existing orders and
 For a fresh Ubuntu 22.04 / 24.04 or RHEL/Fedora VPS. The script installs Docker, clones the repo, generates a `.env`, and starts the containers.
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/manedevo/carniceria-template/master/deployment/setup.sh \
+curl -fsSL https://raw.githubusercontent.com/manedevo/carniceria-template/master/deployment/setup/setup_sh/setup.sh \
   | sudo bash
 ```
 
 Or if you already have the repo:
 
 ```bash
-sudo bash deployment/setup.sh
+sudo bash deployment/setup/setup_sh/setup.sh
 ```
+
+The script generates all credentials automatically — `DB_PASSWORD`, `DB_ROOT_PASSWORD`, and `JWT_SECRET` (64-byte random hex). No manual `.env` editing needed. After it finishes, just create the admin user as described in Option A.
 
 The script is idempotent — running it again on an existing installation will pull the latest code and restart containers without losing data.
 
@@ -190,7 +213,15 @@ mysql_secure_installation
 mysql -u root -p < /opt/carniceria-template/backend/database/schema.sql
 ```
 
-### 3. Install dependencies and start with PM2
+### 3. Configure environment
+
+```bash
+cp .env.example .env
+# set DB_HOST=localhost, DB_PASSWORD, and a generated JWT_SECRET
+node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+```
+
+### 4. Install dependencies and start with PM2
 
 ```bash
 cd /opt/carniceria-template/backend
@@ -201,9 +232,16 @@ pm2 save
 pm2 startup   # follow the printed command to enable autostart
 ```
 
-### 4. Environment variables with PM2
+### 5. Create the first admin user
 
-Create an `ecosystem.config.js` in the backend directory:
+```bash
+cd /opt/carniceria-template/backend
+node scripts/create-admin.js admin@yourdomain.com MyStr0ngPass "Admin Name"
+```
+
+### 6. PM2 ecosystem file (optional)
+
+Create `backend/ecosystem.config.js` to manage env vars via PM2:
 
 ```js
 module.exports = {
@@ -211,12 +249,15 @@ module.exports = {
     name: 'carniceria',
     script: 'index.js',
     env: {
-      NODE_ENV: 'production',
-      PORT: 3000,
-      DB_HOST: 'localhost',
-      DB_USER: 'carniceria',
-      DB_PASSWORD: 'your-password',
-      DB_NAME: 'carniceria_db',
+      NODE_ENV:       'production',
+      PORT:           3000,
+      DB_HOST:        'localhost',
+      DB_USER:        'carniceria',
+      DB_PASSWORD:    'your-password',
+      DB_NAME:        'carniceria_db',
+      JWT_SECRET:     'your-64-byte-hex-secret',
+      JWT_EXPIRES_IN: '8h',
+      BCRYPT_ROUNDS:  '12',
     },
   }],
 };

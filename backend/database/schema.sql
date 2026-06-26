@@ -4,23 +4,45 @@
 CREATE DATABASE IF NOT EXISTS carniceria_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 USE carniceria_db;
 
+-- ─── Users ───────────────────────────────────────────────────────────────────
+-- Debe ir antes que orders (foreign key)
+
+CREATE TABLE IF NOT EXISTS users (
+  id            INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  email         VARCHAR(255) NOT NULL UNIQUE,
+  password_hash VARCHAR(255) NOT NULL,
+  role          ENUM('admin','ventas','cliente') NOT NULL DEFAULT 'cliente',
+  name          VARCHAR(120) NOT NULL,
+  phone         VARCHAR(30)  DEFAULT NULL,
+  active        TINYINT(1)   NOT NULL DEFAULT 1,
+  created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Usuario admin inicial — cambiar contraseña en primer arranque
+-- INSERT INTO users (email, password_hash, role, name) VALUES
+-- ('admin@carniceria.es', '$2b$12$PLACEHOLDER', 'admin', 'Administrador');
+
 -- ─── Products ────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS products (
-  id         INT          UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-  name       VARCHAR(120) NOT NULL,
-  category   ENUM('Ternera','Cerdo','Pollo','Cordero','Embutidos') NOT NULL,
-  price      DECIMAL(8,2) NOT NULL COMMENT 'EUR per kg',
-  note       VARCHAR(255) DEFAULT NULL,
-  image_url  VARCHAR(255) DEFAULT NULL COMMENT 'filename inside public/assets/img/',
-  active     TINYINT(1)   NOT NULL DEFAULT 1,
-  created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+  id            INT          UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name          VARCHAR(120) NOT NULL,
+  category      ENUM('Ternera','Cerdo','Pollo','Cordero','Embutidos') NOT NULL,
+  price         DECIMAL(8,2) NOT NULL COMMENT 'EUR per kg or per pieza',
+  unit_type     ENUM('kg','pieza') NOT NULL DEFAULT 'kg',
+  stock_qty     DECIMAL(10,3) DEFAULT NULL,
+  stock_enabled TINYINT(1)   NOT NULL DEFAULT 0,
+  note          VARCHAR(255) DEFAULT NULL,
+  image_url     VARCHAR(255) DEFAULT NULL COMMENT 'filename inside public/assets/img/',
+  active        TINYINT(1)   NOT NULL DEFAULT 1,
+  created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- ─── Orders ──────────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS orders (
   id              INT           UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  user_id         INT UNSIGNED  DEFAULT NULL,
   customer_name   VARCHAR(120)  NOT NULL,
   phone           VARCHAR(30)   NOT NULL,
   address         TEXT          NOT NULL,
@@ -31,8 +53,32 @@ CREATE TABLE IF NOT EXISTS orders (
   total           DECIMAL(10,2) NOT NULL,
   status          ENUM('pendiente','confirmado','en camino','entregado','cancelado') NOT NULL DEFAULT 'pendiente',
   created_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+  updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ─── Promotions ───────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS promotions (
+  id          INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  name        VARCHAR(120) NOT NULL,
+  type        ENUM('porcentaje','precio_fijo') NOT NULL,
+  value       DECIMAL(8,2) NOT NULL,
+  applies_to  ENUM('todos','categoria','producto') NOT NULL DEFAULT 'todos',
+  category    VARCHAR(80)  DEFAULT NULL,
+  active      TINYINT(1)   NOT NULL DEFAULT 0,
+  starts_at   TIMESTAMP    DEFAULT NULL,
+  ends_at     TIMESTAMP    DEFAULT NULL,
+  created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS promotion_products (
+  promotion_id INT UNSIGNED NOT NULL,
+  product_id   INT UNSIGNED NOT NULL,
+  PRIMARY KEY (promotion_id, product_id),
+  FOREIGN KEY (promotion_id) REFERENCES promotions(id) ON DELETE CASCADE,
+  FOREIGN KEY (product_id)   REFERENCES products(id)   ON DELETE CASCADE
+) ENGINE=InnoDB;
 
 -- ─── Seed data — 30 products ─────────────────────────────────────────────────
 

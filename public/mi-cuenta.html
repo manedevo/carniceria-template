@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi Cuenta · Carnicería Artesanal</title>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Montserrat:wght@300;500;800&display=swap');</style>
+  <link rel="stylesheet" href="/assets/css/main.css" />
+  <style>
+    .account-page { max-width: 900px; margin: 0 auto; padding: 4rem 2rem; }
+    .account-header { margin-bottom: 3rem; }
+    .account-header h2 { font-family: var(--font-title); font-size: 2.5rem; letter-spacing: 2px; }
+    .account-header p  { color: var(--text-dim); font-size: .85rem; margin-top: .5rem; }
+    .orders-list { list-style: none; }
+    .order-card {
+      background: white;
+      border: 1px solid #e8e8e8;
+      margin-bottom: 1.25rem;
+      padding: 1.5rem;
+    }
+    .order-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-bottom: .75rem;
+    }
+    .order-card-title { font-size: .75rem; font-weight: 800; letter-spacing: 1.5px; }
+    .order-card-date  { font-size: .72rem; color: var(--text-dim); }
+    .order-items-mini { font-size: .8rem; color: #555; line-height: 1.8; }
+    .order-total      { font-weight: 800; font-size: .95rem; margin-top: .75rem; }
+    .status-pill {
+      display: inline-block;
+      padding: .2rem .65rem;
+      font-size: .62rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      background: #e8e8e8;
+      color: #555;
+    }
+    .status-entregado { background: #d4edda; color: #155724; }
+    .status-cancelado { background: #f8d7da; color: #721c24; }
+    .status-confirmado { background: #d1ecf1; color: #0c5460; }
+    .status-en-camino  { background: #d4edda; color: #155724; }
+    .empty-state { text-align: center; padding: 4rem; color: var(--text-dim); font-style: italic; }
+    .logout-link { color: var(--text-dim); font-size: .78rem; cursor: pointer; }
+    .logout-link:hover { color: var(--madrid-dark); }
+  </style>
+</head>
+<body>
+
+<header class="madrid-header">
+  <div class="container">
+    <div class="brand-box">
+      <div class="logo"><h1>CARNICERÍA</h1><span>MADRID · DESDE 2026</span></div>
+    </div>
+    <nav class="nav-links">
+      <a href="/#catalogo">EL MERCADO</a>
+      <a href="/#pedido">PEDIDOS</a>
+      <a href="/#nosotros">HERENCIA</a>
+      <a href="/#contacto">UBICACIÓN</a>
+    </nav>
+    <button class="cart-trigger-header" onclick="window.location.href='/'">VOLVER</button>
+  </div>
+</header>
+
+<div class="account-page">
+  <div class="account-header">
+    <h2>MI CUENTA</h2>
+    <p id="welcomeMsg">Cargando...</p>
+    <span class="logout-link" onclick="Auth.logout()" style="display:inline-block;margin-top:.75rem">
+      Cerrar sesión
+    </span>
+  </div>
+
+  <section>
+    <div class="section-heading" style="text-align:left;margin-bottom:2rem">
+      <span class="sub">Historial</span>
+      <h3 class="title" style="font-size:1.8rem">MIS PEDIDOS</h3>
+      <div class="divider" style="margin:1rem 0 0"></div>
+    </div>
+    <ul class="orders-list" id="ordersList">
+      <li><div class="empty-state">Cargando tus pedidos...</div></li>
+    </ul>
+  </section>
+</div>
+
+<footer class="footer-legal">
+  <p>© <span id="year"></span> CARNICERÍA ARTESANAL · MADRID, ESPAÑA</p>
+</footer>
+
+<script src="/assets/js/auth.js"></script>
+<script>
+  'use strict';
+  if (!Auth.requireAuth(['cliente'])) { /* redirected */ }
+
+  function escHtml(s) {
+    return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+  function formatEur(v) {
+    return new Intl.NumberFormat('es-ES',{style:'currency',currency:'EUR'}).format(v);
+  }
+
+  document.getElementById('year').textContent = new Date().getFullYear();
+
+  const user = Auth.getUser();
+  document.getElementById('welcomeMsg').textContent = `Hola, ${user.name} · ${user.email}`;
+
+  async function loadOrders() {
+    const list = document.getElementById('ordersList');
+    try {
+      const res  = await Auth.apiFetch('/api/user/orders');
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error);
+
+      if (!data.length) {
+        list.innerHTML = '<li><div class="empty-state">Aún no has realizado ningún pedido.<br><a href="/" style="color:var(--madrid-gold)">Explorar productos</a></div></li>';
+        return;
+      }
+
+      list.innerHTML = data.map(o => {
+        const items = typeof o.items === 'string' ? JSON.parse(o.items) : o.items;
+        const statusClass = 'status-' + o.status.replace(' ','-');
+        return `<li>
+          <div class="order-card">
+            <div class="order-card-header">
+              <span class="order-card-title">PEDIDO #${o.id}</span>
+              <span class="status-pill ${statusClass}">${escHtml(o.status).toUpperCase()}</span>
+              <span class="order-card-date">${new Date(o.created_at).toLocaleDateString('es-ES',{year:'numeric',month:'long',day:'numeric'})}</span>
+            </div>
+            <div class="order-items-mini">
+              ${items.map(i => `${escHtml(i.name)} × ${i.qty}`).join(' &nbsp;·&nbsp; ')}
+            </div>
+            <p class="order-total">Total: ${formatEur(o.total)}</p>
+            <p style="font-size:.72rem;color:var(--text-dim);margin-top:.3rem">
+              ${escHtml(o.zone)} · ${escHtml(o.time_slot)} · ${escHtml(o.payment_method)}
+            </p>
+          </div>
+        </li>`;
+      }).join('');
+    } catch (err) {
+      list.innerHTML = `<li><div class="empty-state" style="color:#c0392b">${escHtml(err.message)}</div></li>`;
+    }
+  }
+
+  loadOrders();
+</script>
+</body>
+</html>

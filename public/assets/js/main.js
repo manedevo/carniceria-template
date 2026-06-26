@@ -204,24 +204,65 @@ function renderProducts(products) {
     return;
   }
 
+  const banner = document.getElementById('promoBanner');
+  if (banner) {
+    const globalPromo = products.find(p => p.promo_name && p.promo_applies_to === 'todos');
+    const anyPromo    = !globalPromo && products.find(p => p.promo_name);
+
+    if (globalPromo) {
+      const disc = globalPromo.promo_type === 'porcentaje'
+        ? `−${globalPromo.promo_value}%`
+        : `−${formatEur(globalPromo.promo_value)}`;
+      banner.textContent = `PROMOCIÓN ACTIVA: ${escHtml(globalPromo.promo_name)} · ${disc} EN TODA LA SELECCIÓN`;
+      banner.style.display = '';
+    } else if (anyPromo) {
+      banner.textContent = `PROMOCIÓN ACTIVA: ${escHtml(anyPromo.promo_name)} · Selección especial con descuento`;
+      banner.style.display = '';
+    } else {
+      banner.style.display = 'none';
+    }
+  }
+
   grid.innerHTML = products.map(p => {
     const imgStyle = p.image_url
       ? `background-image: url('/assets/img_realistas/${escHtml(p.image_url)}');`
       : '';
 
+    const unitLabel = p.unit_type === 'pieza' ? '/pieza' : '/kg';
+    const effectivePrice = p.promo_price != null ? p.promo_price : p.price;
+
+    const promoBadgeHtml = p.promo_name
+      ? `<div class="promo-badge">
+           ${p.promo_type === 'porcentaje' ? `−${p.promo_value}%` : `−${formatEur(p.promo_value)}`}
+         </div>`
+      : '';
+
+    const priceHtml = p.promo_price != null
+      ? `<span class="price-original">${formatEur(p.price)}</span>
+         <span class="product-price price-promo">${formatEur(p.promo_price)}</span>
+         <span class="product-unit">${unitLabel}</span>`
+      : `<span class="product-price">${formatEur(p.price)}</span>
+         <span class="product-unit">${unitLabel}</span>`;
+
+    const stockHtml = p.stock_enabled && p.stock_qty != null
+      ? `<p class="stock-indicator ${p.stock_qty < 2 ? 'stock-low' : 'stock-ok'}">
+           Quedan ${p.stock_qty.toLocaleString('es-ES')} ${p.unit_type}
+         </p>`
+      : '';
+
     return `
-      <article class="product-card" data-id="${p.id}">
+      <article class="product-card" data-id="${p.id}" style="position:relative">
+        ${promoBadgeHtml}
         <div class="product-img" style="${imgStyle}" role="img" aria-label="${escHtml(p.name)}"></div>
         <div class="product-body">
           <p class="product-category">${escHtml(p.category || '')}</p>
           <p class="product-name">${escHtml(p.name)}</p>
           <p class="product-note">${escHtml(p.note || '')}</p>
+          ${stockHtml}
           <div class="product-footer">
-            <div>
-              <span class="product-price">${formatEur(p.price)}</span>
-              <span class="product-unit">/kg</span>
-            </div>
-            <button class="add-btn" data-id="${p.id}" data-name="${escHtml(p.name)}" data-price="${p.price}" aria-label="Añadir ${escHtml(p.name)} al carrito">+</button>
+            <div>${priceHtml}</div>
+            <button class="add-btn" data-id="${p.id}" data-name="${escHtml(p.name)}"
+              data-price="${effectivePrice}" aria-label="Añadir ${escHtml(p.name)} al carrito">+</button>
           </div>
         </div>
       </article>`;
@@ -325,6 +366,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Año en footer
   const yearEl = document.getElementById('year');
   if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+  // Auth nav link
+  if (typeof Auth !== 'undefined') Auth.updateAuthNav();
 
   await loadCategories();
   await loadProducts('Todos', '');

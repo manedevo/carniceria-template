@@ -729,6 +729,47 @@ img { max-width: 100%; display: block; }
   border-top: 1px solid #222;
 }
 
+/* ── Promo banner / badges ───────────────────────────────────────────────── */
+.promo-banner {
+  background: #c5a059;
+  color: white;
+  text-align: center;
+  padding: 0.7rem 1rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.promo-badge {
+  position: absolute;
+  top: 0.75rem;
+  left: 0.75rem;
+  background: #c0392b;
+  color: white;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  padding: 0.25rem 0.5rem;
+  z-index: 2;
+}
+
+.price-original {
+  text-decoration: line-through;
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin-right: 0.35rem;
+}
+
+.price-promo { color: #c0392b !important; }
+
+.stock-indicator {
+  font-size: 0.68rem;
+  font-weight: 600;
+  margin-top: 0.3rem;
+}
+.stock-low  { color: #c0392b; }
+.stock-ok   { color: #27ae60; }
+
 /* ── Toast ───────────────────────────────────────────────────────────────── */
 .toast {
   position: fixed;

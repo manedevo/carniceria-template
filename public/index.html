@@ -10,6 +10,9 @@
 </head>
 <body>
 
+<!-- ── Banner de promoción ───────────────────────────────────────────────── -->
+<div class="promo-banner" id="promoBanner" style="display:none"></div>
+
 <!-- ── Header ─────────────────────────────────────────────────────────────── -->
 <header class="madrid-header">
   <div class="container">
@@ -24,6 +27,7 @@
       <a href="#pedido">PEDIDOS</a>
       <a href="#nosotros">HERENCIA</a>
       <a href="#contacto">UBICACIÓN</a>
+      <a href="#" id="authNavLink">MI CUENTA</a>
     </nav>
     <button class="cart-trigger-header" id="cartBtn" aria-label="Ver carrito">
       CARRITO <span class="cart-count" id="cartCount">0</span>
@@ -206,6 +210,7 @@
 <!-- ── Toast ──────────────────────────────────────────────────────────────── -->
 <div class="toast" id="toast" role="alert" aria-live="polite" hidden></div>
 
+<script src="/assets/js/auth.js"></script>
 <script src="/assets/js/main.js"></script>
 </body>
 </html>

@@ -1,6 +1,18 @@
 const express = require('express');
 const router  = express.Router();
 const db      = require('../config/database');
+const jwt     = require('jsonwebtoken');
+
+function optionalUser(req) {
+  try {
+    const header = req.headers.authorization || '';
+    const token  = header.startsWith('Bearer ') ? header.slice(7) : null;
+    if (!token) return null;
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
 
 router.post('/', async (req, res) => {
   try {
@@ -10,11 +22,14 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Datos incompletos. Verifica nombre, teléfono, dirección, zona, horario y carrito.' });
     }
 
-    const total    = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+    const user    = optionalUser(req);
+    const user_id = user?.id || null;
+    const total   = items.reduce((sum, item) => sum + item.price * item.qty, 0);
+
     const [result] = await db.query(
-      `INSERT INTO orders (customer_name, phone, address, zone, time_slot, payment_method, items, total)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [name, phone, address, zone, time_slot, payment_method || 'Efectivo', JSON.stringify(items), total]
+      `INSERT INTO orders (user_id, customer_name, phone, address, zone, time_slot, payment_method, items, total)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [user_id, name, phone, address, zone, time_slot, payment_method || 'Efectivo', JSON.stringify(items), total]
     );
 
     res.status(201).json({ id: result.insertId, message: 'Pedido registrado. Te contactaremos para confirmar.' });

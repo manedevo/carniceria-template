@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Panel Admin · Carnicería Artesanal</title>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Montserrat:wght@300;500;800&display=swap');</style>
+  <link rel="stylesheet" href="/assets/css/admin.css" />
+</head>
+<body>
+
+<aside class="admin-sidebar">
+  <div class="sidebar-brand">
+    <h1>CARNICERÍA</h1>
+    <span>PANEL ADMIN</span>
+  </div>
+  <ul class="sidebar-nav">
+    <li><a href="/admin/" class="active"><span class="nav-icon">📊</span> DASHBOARD</a></li>
+    <li><a href="/admin/productos.html"><span class="nav-icon">🥩</span> PRODUCTOS</a></li>
+    <li><a href="/admin/pedidos.html"><span class="nav-icon">📦</span> PEDIDOS</a></li>
+    <li><a href="/admin/promociones.html"><span class="nav-icon">🏷️</span> PROMOCIONES</a></li>
+    <li><a href="/"><span class="nav-icon">🌐</span> VER TIENDA</a></li>
+  </ul>
+  <div class="sidebar-footer">
+    <strong class="admin-user-name">—</strong>
+    <span>Administrador</span>
+    <button class="logout-btn" id="logoutBtn">CERRAR SESIÓN</button>
+  </div>
+</aside>
+
+<div class="admin-main">
+  <div class="admin-topbar">
+    <span class="topbar-title">Dashboard</span>
+    <div class="topbar-actions">
+      <span style="font-size:.72rem;color:var(--text-dim)" id="topbarDate"></span>
+    </div>
+  </div>
+
+  <div class="admin-content">
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <p class="stat-label">PEDIDOS PENDIENTES</p>
+        <p class="stat-value" id="statPending">—</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">PEDIDOS HOY</p>
+        <p class="stat-value" id="statTodayOrders">—</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">FACTURACIÓN HOY</p>
+        <p class="stat-value" id="statTodayRevenue">—</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">PRODUCTOS ACTIVOS</p>
+        <p class="stat-value" id="statActiveProducts">—</p>
+      </div>
+      <div class="stat-card">
+        <p class="stat-label">PROMOS ACTIVAS</p>
+        <p class="stat-value" id="statActivePromos">—</p>
+      </div>
+    </div>
+
+    <!-- Últimos pedidos -->
+    <div class="table-card">
+      <div class="table-header">
+        <h3>ÚLTIMOS PEDIDOS</h3>
+        <a href="/admin/pedidos.html" class="btn btn-primary" style="font-size:.62rem">VER TODOS</a>
+      </div>
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th><th>CLIENTE</th><th>TOTAL</th><th>ESTADO</th><th>FECHA</th>
+          </tr>
+        </thead>
+        <tbody id="recentOrdersTbody">
+          <tr><td colspan="5" style="padding:1.5rem;color:#888">Cargando...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="adminToast" hidden></div>
+
+<script src="/assets/js/auth.js"></script>
+<script src="/assets/js/admin.js"></script>
+<script>
+  document.getElementById('topbarDate').textContent =
+    new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+</script>
+</body>
+</html>

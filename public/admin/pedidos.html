@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pedidos · Panel Admin</title>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Montserrat:wght@300;500;800&display=swap');</style>
+  <link rel="stylesheet" href="/assets/css/admin.css" />
+</head>
+<body>
+
+<aside class="admin-sidebar">
+  <div class="sidebar-brand"><h1>CARNICERÍA</h1><span>PANEL ADMIN</span></div>
+  <ul class="sidebar-nav">
+    <li><a href="/admin/"><span class="nav-icon">📊</span> DASHBOARD</a></li>
+    <li><a href="/admin/productos.html"><span class="nav-icon">🥩</span> PRODUCTOS</a></li>
+    <li><a href="/admin/pedidos.html" class="active"><span class="nav-icon">📦</span> PEDIDOS</a></li>
+    <li><a href="/admin/promociones.html"><span class="nav-icon">🏷️</span> PROMOCIONES</a></li>
+    <li><a href="/"><span class="nav-icon">🌐</span> VER TIENDA</a></li>
+  </ul>
+  <div class="sidebar-footer">
+    <strong class="admin-user-name">—</strong><span>Admin / Vendedor</span>
+    <button class="logout-btn" id="logoutBtn">CERRAR SESIÓN</button>
+  </div>
+</aside>
+
+<div class="admin-main">
+  <div class="admin-topbar">
+    <span class="topbar-title">Gestión de Pedidos</span>
+  </div>
+
+  <div class="admin-content">
+    <!-- Filtros -->
+    <div class="table-card" style="padding:1.25rem 1.5rem;margin-bottom:1.25rem">
+      <div class="filters-bar">
+        <select id="filterStatus">
+          <option value="">Todos los estados</option>
+          <option value="pendiente">Pendiente</option>
+          <option value="confirmado">Confirmado</option>
+          <option value="en camino">En camino</option>
+          <option value="entregado">Entregado</option>
+          <option value="cancelado">Cancelado</option>
+        </select>
+        <select id="filterZone">
+          <option value="">Todas las zonas</option>
+          <option>Chamartín / Salamanca</option>
+          <option>Chamberí / Centro</option>
+          <option>Retiro / Arganzuela</option>
+          <option>Norte (Hortaleza, Fuencarral)</option>
+          <option>Sur (Usera, Vallecas)</option>
+          <option>Otras zonas (M-30/M-40)</option>
+        </select>
+        <input type="date" id="filterFrom" placeholder="Desde" />
+        <input type="date" id="filterTo"   placeholder="Hasta" />
+        <button class="btn btn-primary" id="applyFilters">FILTRAR</button>
+      </div>
+    </div>
+
+    <div class="table-card">
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>CLIENTE</th>
+              <th>ZONA</th>
+              <th>HORARIO</th>
+              <th>TOTAL</th>
+              <th>ESTADO</th>
+              <th>FECHA</th>
+              <th>ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody id="ordersTbody">
+            <tr><td colspan="8" style="padding:2rem;color:#888">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="adminToast" hidden></div>
+<script src="/assets/js/auth.js"></script>
+<script src="/assets/js/admin.js"></script>
+</body>
+</html>

@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Productos · Panel Admin</title>
+  <style>@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Montserrat:wght@300;500;800&display=swap');</style>
+  <link rel="stylesheet" href="/assets/css/admin.css" />
+</head>
+<body>
+
+<aside class="admin-sidebar">
+  <div class="sidebar-brand"><h1>CARNICERÍA</h1><span>PANEL ADMIN</span></div>
+  <ul class="sidebar-nav">
+    <li><a href="/admin/"><span class="nav-icon">📊</span> DASHBOARD</a></li>
+    <li><a href="/admin/productos.html" class="active"><span class="nav-icon">🥩</span> PRODUCTOS</a></li>
+    <li><a href="/admin/pedidos.html"><span class="nav-icon">📦</span> PEDIDOS</a></li>
+    <li><a href="/admin/promociones.html"><span class="nav-icon">🏷️</span> PROMOCIONES</a></li>
+    <li><a href="/"><span class="nav-icon">🌐</span> VER TIENDA</a></li>
+  </ul>
+  <div class="sidebar-footer">
+    <strong class="admin-user-name">—</strong><span>Administrador</span>
+    <button class="logout-btn" id="logoutBtn">CERRAR SESIÓN</button>
+  </div>
+</aside>
+
+<div class="admin-main">
+  <div class="admin-topbar">
+    <span class="topbar-title">Gestión de Productos</span>
+    <div class="topbar-actions">
+      <button class="btn btn-gold" onclick="openModal('newProductModal')">+ NUEVO PRODUCTO</button>
+    </div>
+  </div>
+
+  <div class="admin-content">
+    <div class="table-card">
+      <div class="table-header">
+        <h3>TODOS LOS PRODUCTOS</h3>
+        <span style="font-size:.72rem;color:var(--text-dim)">Edita precio/stock directamente en la fila y pulsa Guardar</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>NOMBRE</th>
+              <th>CATEGORÍA</th>
+              <th>UNIDAD</th>
+              <th>PRECIO</th>
+              <th>STOCK</th>
+              <th>ACTIVO</th>
+              <th>ACCIONES</th>
+            </tr>
+          </thead>
+          <tbody id="productsTbody">
+            <tr><td colspan="7" style="padding:2rem;color:#888">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo producto -->
+<div class="modal-overlay hidden" id="newProductModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Nuevo Producto</h3>
+      <button class="modal-close">CERRAR</button>
+    </div>
+    <div class="modal-body">
+      <form id="newProductForm">
+        <div class="form-grid">
+          <div class="form-field span-2">
+            <label>Nombre</label>
+            <input type="text" name="name" required placeholder="Ej: Solomillo de ternera" />
+          </div>
+          <div class="form-field">
+            <label>Categoría</label>
+            <select name="category" required>
+              <option value="Ternera">Ternera</option>
+              <option value="Cerdo">Cerdo</option>
+              <option value="Pollo">Pollo</option>
+              <option value="Cordero">Cordero</option>
+              <option value="Embutidos">Embutidos</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Tipo de unidad</label>
+            <select name="unit_type">
+              <option value="kg">kg</option>
+              <option value="pieza">pieza</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Precio (€)</label>
+            <input type="number" name="price" step="0.01" min="0" required placeholder="0.00" />
+          </div>
+          <div class="form-field">
+            <label>Stock inicial</label>
+            <input type="number" name="stock_qty" step="0.001" min="0" placeholder="Dejar vacío = sin límite" />
+          </div>
+          <div class="form-field span-2">
+            <label>Descripción (nota)</label>
+            <input type="text" name="note" placeholder="Descripción del producto" />
+          </div>
+          <div class="form-field span-2">
+            <label>Imagen (nombre de archivo)</label>
+            <input type="text" name="image_url" placeholder="foto.jpg" />
+          </div>
+          <div class="form-field">
+            <label class="toggle-wrap">
+              <span class="toggle">
+                <input type="checkbox" name="stock_enabled" />
+                <span class="toggle-slider"></span>
+              </span>
+              Mostrar stock al cliente
+            </label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-outline-sm modal-close" style="padding:.65rem 1.25rem">CANCELAR</button>
+          <button type="submit" class="btn btn-gold">CREAR PRODUCTO</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal editar producto -->
+<div class="modal-overlay hidden" id="editProductModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Editar Producto</h3>
+      <button class="modal-close">CERRAR</button>
+    </div>
+    <div class="modal-body">
+      <form id="editProductForm">
+        <div class="form-grid">
+          <div class="form-field span-2">
+            <label>Nombre</label>
+            <input type="text" name="name" required />
+          </div>
+          <div class="form-field">
+            <label>Categoría</label>
+            <select name="category">
+              <option value="Ternera">Ternera</option>
+              <option value="Cerdo">Cerdo</option>
+              <option value="Pollo">Pollo</option>
+              <option value="Cordero">Cordero</option>
+              <option value="Embutidos">Embutidos</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Tipo de unidad</label>
+            <select name="unit_type">
+              <option value="kg">kg</option>
+              <option value="pieza">pieza</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label>Precio (€)</label>
+            <input type="number" name="price" step="0.01" min="0" required />
+          </div>
+          <div class="form-field">
+            <label>Stock</label>
+            <input type="number" name="stock_qty" step="0.001" min="0" placeholder="Vacío = sin límite" />
+          </div>
+          <div class="form-field span-2">
+            <label>Descripción</label>
+            <input type="text" name="note" />
+          </div>
+          <div class="form-field span-2">
+            <label>Imagen (nombre de archivo)</label>
+            <input type="text" name="image_url" />
+          </div>
+          <div class="form-field">
+            <label class="toggle-wrap">
+              <span class="toggle">
+                <input type="checkbox" name="stock_enabled" />
+                <span class="toggle-slider"></span>
+              </span>
+              Mostrar stock
+            </label>
+          </div>
+          <div class="form-field">
+            <label class="toggle-wrap">
+              <span class="toggle">
+                <input type="checkbox" name="active" />
+                <span class="toggle-slider"></span>
+              </span>
+              Producto activo
+            </label>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-outline-sm modal-close" style="padding:.65rem 1.25rem">CANCELAR</button>
+          <button type="submit" class="btn btn-primary">GUARDAR CAMBIOS</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="adminToast" hidden></div>
+<script src="/assets/js/auth.js"></script>
+<script src="/assets/js/admin.js"></script>
+</body>
+</html>

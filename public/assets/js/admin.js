@@ -246,8 +246,8 @@ async function submitNewPromo(e) {
     applies_to,
     category:   applies_to === 'categoria' ? f.querySelector('[name=category]').value : null,
     active:     f.querySelector('[name=active]').checked,
-    starts_at:  f.querySelector('[name=starts_at]').value || null,
-    ends_at:    f.querySelector('[name=ends_at]').value   || null,
+    starts_at:  f.querySelector('[name=starts_at]').value ? new Date(f.querySelector('[name=starts_at]').value).toISOString() : null,
+    ends_at:    f.querySelector('[name=ends_at]').value   ? new Date(f.querySelector('[name=ends_at]').value).toISOString()   : null,
     product_ids: applies_to === 'producto' ? selectedProducts : [],
   };
 

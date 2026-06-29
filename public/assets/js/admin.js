@@ -258,8 +258,6 @@ async function submitNewPromo(e) {
 
 // ── Orders page ───────────────────────────────────────────────────────────────
 
-const isAdmin = () => Auth.getUser()?.role === 'admin';
-
 async function loadAdminOrders(filters = {}) {
   const tbody = document.getElementById('ordersTbody');
   if (!tbody) return;
@@ -283,7 +281,7 @@ async function loadAdminOrders(filters = {}) {
         <td>${new Date(o.created_at).toLocaleDateString('es-ES')}</td>
         <td>
           <button class="btn-outline-sm" onclick="expandOrderRow(${o.id}, this)">Detalles</button>
-          ${isAdmin() ? `
+          ${Auth.isAdmin() ? `
           <select class="btn-outline-sm" style="margin-left:4px"
             onchange="updateOrderStatus(${o.id}, this.value, this)">
             <option value="">Estado...</option>

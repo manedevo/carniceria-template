@@ -164,6 +164,9 @@ a { color: inherit; text-decoration: none; }
   background: white;
   border: 1px solid #e8e8e8;
 }
+.loading-cell      { padding: 2rem; color: #888; }
+.error-cell        { color: var(--danger); padding: 1rem; }
+.order-detail-meta { margin-top: .5rem; font-size: .75rem; }
 .table-header {
   padding: 1.25rem 1.5rem;
   border-bottom: 1px solid #eee;
@@ -239,6 +242,8 @@ a { color: inherit; text-decoration: none; }
 .btn-primary { background: var(--madrid-dark); color: white; }
 .btn-primary:hover { background: var(--madrid-gray); }
 .btn-full { width: 100%; justify-content: center; }
+.ml-sm { margin-left: 4px; }
+.w-70  { width: 70px; }
 .btn-gold { background: var(--madrid-gold); color: white; }
 .btn-gold:hover { filter: brightness(1.1); }
 .btn-outline-sm {
@@ -327,6 +332,7 @@ a { color: inherit; text-decoration: none; }
   padding: 1rem;
 }
 .modal-overlay.hidden { display: none; }
+.hidden { display: none; }
 .modal {
   background: white;
   width: 100%;

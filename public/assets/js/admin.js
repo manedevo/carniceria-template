@@ -39,6 +39,8 @@ function showToast(msg, ok = true) {
 function openModal(id) { document.getElementById(id).classList.remove('hidden'); }
 function closeModal(id){ document.getElementById(id).classList.add('hidden'); }
 
+// ── Delegated event listeners ─────────────────────────────────────────────────
+
 document.addEventListener('click', e => {
   if (e.target.matches('.modal-overlay')) {
     e.target.classList.add('hidden');
@@ -46,6 +48,22 @@ document.addEventListener('click', e => {
   if (e.target.matches('.modal-close')) {
     e.target.closest('.modal-overlay').classList.add('hidden');
   }
+  const el = e.target.closest('[data-action]');
+  if (!el) return;
+  const action = el.dataset.action;
+  const id     = el.dataset.id !== undefined ? parseInt(el.dataset.id, 10) : null;
+  if (action === 'save-product')   saveProductInline(id, el);
+  if (action === 'edit-product')   openEditModal(id);
+  if (action === 'delete-product') deleteProduct(id);
+  if (action === 'toggle-promo')   togglePromo(id, parseInt(el.dataset.active, 10));
+  if (action === 'delete-promo')   deletePromo(id);
+  if (action === 'expand-order')   expandOrderRow(id, el);
+  if (action === 'open-modal')     openModal(el.dataset.modal);
+});
+
+document.addEventListener('change', e => {
+  const el = e.target.closest('[data-action="update-status"]');
+  if (el) updateOrderStatus(parseInt(el.dataset.id, 10), el.value, el);
 });
 
 // ── Products page ─────────────────────────────────────────────────────────────
@@ -53,7 +71,7 @@ document.addEventListener('click', e => {
 async function loadAdminProducts() {
   const tbody = document.getElementById('productsTbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="8" style="padding:2rem;color:#888">Cargando...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">Cargando...</td></tr>';
   try {
     const res  = await Auth.apiFetch('/api/admin/products');
     const data = await res.json();
@@ -65,13 +83,13 @@ async function loadAdminProducts() {
         <td>${escHtml(p.category)}</td>
         <td>${escHtml(p.unit_type)}</td>
         <td>
-          <input class="inline-input" type="number" step="0.01" min="0"
-            value="${p.price}" data-field="price" style="width:70px" />
+          <input class="inline-input w-70" type="number" step="0.01" min="0"
+            value="${p.price}" data-field="price" />
         </td>
         <td>
-          <input class="inline-input" type="number" step="0.001" min="0"
-            value="${p.stock_qty ?? ''}" data-field="stock_qty" placeholder="—" style="width:70px" />
-          <label class="toggle" title="Control de stock activo" style="margin-left:4px">
+          <input class="inline-input w-70" type="number" step="0.001" min="0"
+            value="${p.stock_qty ?? ''}" data-field="stock_qty" placeholder="—" />
+          <label class="toggle ml-sm" title="Control de stock activo">
             <input type="checkbox" data-field="stock_enabled" ${p.stock_enabled ? 'checked' : ''} />
             <span class="toggle-slider"></span>
           </label>
@@ -83,13 +101,13 @@ async function loadAdminProducts() {
           </label>
         </td>
         <td>
-          <button class="btn-outline-sm" onclick="saveProductInline(${p.id}, this)">Guardar</button>
-          <button class="btn-outline-sm" onclick="openEditModal(${p.id})" style="margin-left:4px">Editar</button>
-          <button class="btn-danger-sm"  onclick="deleteProduct(${p.id})" style="margin-left:4px">Baja</button>
+          <button class="btn-outline-sm" data-action="save-product" data-id="${p.id}">Guardar</button>
+          <button class="btn-outline-sm ml-sm" data-action="edit-product" data-id="${p.id}">Editar</button>
+          <button class="btn-danger-sm ml-sm"  data-action="delete-product" data-id="${p.id}">Baja</button>
         </td>
       </tr>`).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="8" style="color:var(--danger);padding:1rem">${escHtml(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="error-cell">${escHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -199,13 +217,13 @@ async function loadAdminPromotions() {
         <td>${p.ends_at   ? p.ends_at.substring(0,10)   : '—'}</td>
         <td>${activeBadge}</td>
         <td>
-          <button class="btn-outline-sm" onclick="togglePromo(${p.id}, ${p.active ? 0 : 1})">${p.active ? 'Desactivar' : 'Activar'}</button>
-          <button class="btn-danger-sm"  onclick="deletePromo(${p.id})" style="margin-left:4px">Eliminar</button>
+          <button class="btn-outline-sm" data-action="toggle-promo" data-id="${p.id}" data-active="${p.active ? 0 : 1}">${p.active ? 'Desactivar' : 'Activar'}</button>
+          <button class="btn-danger-sm ml-sm" data-action="delete-promo" data-id="${p.id}">Eliminar</button>
         </td>
       </tr>`;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="7" style="color:var(--danger);padding:1rem">${escHtml(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="7" class="error-cell">${escHtml(err.message)}</td></tr>`;
   }
 }
 
@@ -223,11 +241,27 @@ async function deletePromo(id) {
 }
 
 function handleAppliesToChange(selectEl) {
-  const catField    = document.getElementById('promoCategoryField');
-  const prodField   = document.getElementById('promoProductsField');
+  const catField  = document.getElementById('promoCategoryField');
+  const prodField = document.getElementById('promoProductsField');
   if (!catField || !prodField) return;
   catField.style.display  = selectEl.value === 'categoria' ? '' : 'none';
   prodField.style.display = selectEl.value === 'producto'  ? '' : 'none';
+}
+
+function handlePromoNameSelect(sel) {
+  const inp = document.getElementById('promoNameInput');
+  if (!inp) return;
+  if (sel.value === '_custom') {
+    inp.style.display = '';
+    inp.required = true;
+    inp.name = 'name';
+    sel.name = '_promoNameSelect';
+  } else {
+    inp.style.display = 'none';
+    inp.required = false;
+    inp.name = '';
+    sel.name = 'name';
+  }
 }
 
 async function submitNewPromo(e) {
@@ -265,7 +299,7 @@ async function loadAdminOrders(filters = {}, offset = 0) {
   _ordersOffset = offset;
   const tbody = document.getElementById('ordersTbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="8" style="padding:2rem;color:#888">Cargando...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="8" class="loading-cell">Cargando...</td></tr>';
   try {
     const params = new URLSearchParams({ ...filters, limit: ORDERS_LIMIT, offset });
     const res  = await Auth.apiFetch('/api/admin/orders?' + params);
@@ -284,10 +318,9 @@ async function loadAdminOrders(filters = {}, offset = 0) {
         <td>${statusBadge(o.status)}</td>
         <td>${new Date(o.created_at).toLocaleDateString('es-ES')}</td>
         <td>
-          <button class="btn-outline-sm" onclick="expandOrderRow(${o.id}, this)">Detalles</button>
+          <button class="btn-outline-sm" data-action="expand-order" data-id="${o.id}">Detalles</button>
           ${Auth.isAdmin() ? `
-          <select class="btn-outline-sm" style="margin-left:4px"
-            onchange="updateOrderStatus(${o.id}, this.value, this)">
+          <select class="btn-outline-sm ml-sm" data-action="update-status" data-id="${o.id}">
             <option value="">Estado...</option>
             <option value="pendiente">Pendiente</option>
             <option value="confirmado">Confirmado</option>
@@ -297,35 +330,35 @@ async function loadAdminOrders(filters = {}, offset = 0) {
           </select>` : ''}
         </td>
       </tr>
-      <tr id="detail-${o.id}" style="display:none">
+      <tr id="detail-${o.id}" class="hidden">
         <td colspan="8">
           <div class="order-items-detail">
             <strong>Artículos (${count}):</strong>
             <table>
               ${items.map(i => `<tr><td>${escHtml(i.name)}</td><td>${i.qty}x</td><td>${formatEur(i.price)}</td><td>${formatEur(i.price * i.qty)}</td></tr>`).join('')}
             </table>
-            <p style="margin-top:.5rem;font-size:.75rem">Tel: ${escHtml(o.phone)} · Dirección: ${escHtml(o.address)} · Pago: ${escHtml(o.payment_method)}</p>
+            <p class="order-detail-meta">Tel: ${escHtml(o.phone)} · Dirección: ${escHtml(o.address)} · Pago: ${escHtml(o.payment_method)}</p>
           </div>
         </td>
       </tr>`;
     }).join('');
-    const prevBtn = document.getElementById('ordersPrev');
-    const nextBtn = document.getElementById('ordersNext');
+    const prevBtn  = document.getElementById('ordersPrev');
+    const nextBtn  = document.getElementById('ordersNext');
     const pageInfo = document.getElementById('ordersPageInfo');
-    if (prevBtn) prevBtn.disabled = offset === 0;
-    if (nextBtn) nextBtn.disabled = data.length < ORDERS_LIMIT;
+    if (prevBtn)  prevBtn.disabled  = offset === 0;
+    if (nextBtn)  nextBtn.disabled  = data.length < ORDERS_LIMIT;
     if (pageInfo) pageInfo.textContent = `Página ${Math.floor(offset / ORDERS_LIMIT) + 1}`;
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="8" style="color:var(--danger);padding:1rem">${escHtml(err.message)}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="8" class="error-cell">${escHtml(err.message)}</td></tr>`;
   }
 }
 
 function expandOrderRow(id, btn) {
   const row = document.getElementById('detail-' + id);
   if (!row) return;
-  const hidden = row.style.display === 'none';
-  row.style.display = hidden ? '' : 'none';
-  btn.textContent = hidden ? 'Ocultar' : 'Detalles';
+  const wasHidden = row.classList.contains('hidden');
+  row.classList.toggle('hidden');
+  btn.textContent = wasHidden ? 'Ocultar' : 'Detalles';
 }
 
 async function updateOrderStatus(id, status, sel) {
@@ -396,7 +429,7 @@ async function loadDashboard() {
           <td>${formatEur(o.total)}</td>
           <td>${statusBadge(o.status)}</td>
           <td>${new Date(o.created_at).toLocaleDateString('es-ES')}</td>
-        </tr>`).join('') || '<tr><td colspan="5" style="color:#888;padding:1rem">Sin pedidos hoy</td></tr>';
+        </tr>`).join('') || '<tr><td colspan="5" class="loading-cell">Sin pedidos hoy</td></tr>';
     }
   } catch (err) {
     console.error('Dashboard error:', err);
@@ -415,6 +448,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const user = Auth.getUser();
   document.querySelectorAll('.admin-user-name').forEach(el => { el.textContent = user.name; });
+
+  const topbarDate = document.getElementById('topbarDate');
+  if (topbarDate) topbarDate.textContent = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
   document.getElementById('logoutBtn')?.addEventListener('click', Auth.logout);
 
@@ -439,6 +475,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // Promo form handlers
   document.getElementById('newPromoForm')?.addEventListener('submit', submitNewPromo);
   document.getElementById('promoAppliesTo')?.addEventListener('change', e => handleAppliesToChange(e.target));
+  document.getElementById('promoNameSelect')?.addEventListener('change', e => handlePromoNameSelect(e.target));
 
   // Orders filter + pagination
   document.getElementById('applyFilters')?.addEventListener('click', () => loadAdminOrders(currentOrderFilters(), 0));

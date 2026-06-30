@@ -224,6 +224,40 @@ Mismo patrón que `loginLimiter` en `auth.js` — `express-rate-limit` ya estaba
 
 ---
 
+---
+
+## 2026-06-30 — Eliminación de contenido inline bloqueado por la CSP (commits `1ac54e3`–`9bef664`)
+
+**Contexto:** La CSP activada en el commit `f04a6b8` (ver V-04 arriba) usa `script-src 'self'` y `style-src 'self' + fonts` sin `'unsafe-inline'`. Esto bloquea: bloques `<script>` sin `src`, atributos `style="..."` en el HTML (estático o generado por `innerHTML`), atributos `onclick=`/`onchange=`, y bloques `<style>` en `<head>`. Una auditoría completa de los 8 archivos HTML y 2 archivos JS del frontend identificó todos los casos a corregir.
+
+**Solución aplicada:** externalizar todo el contenido inline — no se relajó la CSP con `'unsafe-inline'`.
+
+### Archivos JS nuevos
+
+| Archivo | Procedencia |
+|---|---|
+| `public/assets/js/login.js` | Extraído del `<script>` inline de `login.html` |
+| `public/assets/js/registro.js` | Extraído del `<script>` inline de `registro.html` |
+| `public/assets/js/mi-cuenta.js` | Extraído del `<script>` inline de `mi-cuenta.html` |
+
+### Cambios por área
+
+**`login.html` / `registro.html`:** Scripts movidos a `login.js` / `registro.js`. Botón submit con `style="width:100%;justify-content:center;"` sustituido por clase `.btn-full` en `admin.css`.
+
+**`mi-cuenta.html`:** Bloque `<style>` (39 reglas de los componentes `.order-card`, `.status-pill`, etc.) movido a `main.css`. Script movido a `mi-cuenta.js`. Atributos `onclick=` en botones sustituidos por `data-action` con listener delegado en el nuevo archivo. Atributos `style=` puntuales sustituidos por clases nuevas: `.mt-sm`, `.heading-left`, `.title-sm`, `.divider-tight`, `.link-gold`, `.meta-line`, `.error-text`.
+
+**`index.html` / `main.js`:** `style="display:none"` de `#promoBanner` movido a la regla `.promo-banner { display:none }` en `main.css`; `main.js` pasa de `banner.style.display = ''` a `banner.style.display = 'block'` para mostrar el banner (CSSOM, no bloqueado por CSP). `style="flex:1"` en templates de carrito sustituido por clase `.cart-item-info`. `style="position:relative"` en `.product-card` eliminado (ya declarado en `main.css`). `style="${imgStyle}"` en `.product-img` sustituido por `data-image` + asignación CSSOM post-render (`el.style.backgroundImage = ...`).
+
+**`admin.js`:** Todos los `onclick="fn(id)"` y `onchange="fn(this)"` generados en templates de productos, promociones y pedidos sustituidos por `data-action`/`data-id`/`data-active` con un único listener delegado de `click` y otro de `change`. `expandOrderRow` migrado de `style.display` a `classList.toggle('hidden')`. `handlePromoNameSelect` (estaba en `<script>` inline de `promociones.html`) migrado a `admin.js` y conectado vía `addEventListener`. `style=` en templates de tabla sustituidos por clases: `.w-70`, `.ml-sm`, `.loading-cell`, `.error-cell`, `.order-detail-meta`, `.hidden`.
+
+**4 páginas del panel admin:** `onclick=` en botones "NUEVO PRODUCTO" / "NUEVA PROMOCIÓN" sustituidos por `data-action="open-modal"`. `onchange="handlePromoNameSelect"` eliminado (ahora en `admin.js`). Todos los `style=` puntuales sustituidos por clases nuevas en `admin.css`: `.topbar-date`, `.btn-xs`, `.btn-cancel`, `.filters-card`, `.overflow-auto`, `.pagination-bar`, `.page-info`, `.modal-sm`, `.mt-xs`, `.text-muted-sm`. `style="display:none"` de `#promoCategoryField`, `#promoProductsField` y `#promoNameInput` sustituidos por `class="hidden"`. Script inline de `admin/index.html` (fecha en topbar) eliminado — la lógica se movió al `DOMContentLoaded` de `admin.js`. Script inline de `admin/promociones.html` (función `handlePromoNameSelect`) eliminado — migrado a `admin.js`.
+
+**Nota técnica:** La CSP bloquea atributos `style="..."` escritos en el HTML y atributos de evento, pero **no** bloquea asignaciones CSSOM vía JS (`el.style.propiedad = valor`, `el.classList.toggle(...)`). La lógica JS existente que ya operaba con CSSOM no requirió cambios.
+
+**Resultado:** cero `style="..."`, `onclick=`, `onchange=` en ningún archivo HTML. Cero `style=` en template strings de JS. `node --check` pasa en todos los archivos JS del frontend.
+
+---
+
 ## Mejoras a largo plazo (backlog)
 
 Todos los hallazgos críticos y quick wins del audit han sido aplicados. Lo que sigue son mejoras arquitectónicas que requieren mayor esfuerzo o decisiones de diseño:

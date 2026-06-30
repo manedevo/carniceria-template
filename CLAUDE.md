@@ -47,7 +47,10 @@ public/
   assets/js/
     auth.js                 ← JWT helpers: getUser, apiFetch, requireAuth, updateAuthNav
     main.js                 ← storefront: cart Map, debounced search, promo render, escHtml
-    admin.js                ← panel admin: products/orders/promos/dashboard (~430 líneas)
+    login.js                ← lógica de login.html (extraído para cumplir CSP)
+    registro.js             ← lógica de registro.html (extraído para cumplir CSP)
+    mi-cuenta.js            ← lógica de mi-cuenta.html (extraído para cumplir CSP)
+    admin.js                ← panel admin: products/orders/promos/dashboard (~480 líneas)
   assets/css/
     main.css / admin.css
 ```
@@ -87,10 +90,11 @@ public/
 - **Soft delete:** `active = 0` en products y promotions — nunca hard delete
 - **Promo priority en products.js:** producto específico > categoría > todos (N+1 conocido, ver T-04)
 - **optionalUser()** en orders.js: extrae JWT si está presente, no falla si no hay token
-- **escHtml()** en main.js: aplicar SIEMPRE antes de innerHTML con datos del servidor
+- **escHtml()** en main.js y mi-cuenta.js: aplicar SIEMPRE antes de innerHTML con datos del servidor
 - **Auth.apiFetch()**: redirige a /login.html en 401 automáticamente
 - **loadDashboard()** en admin.js: role-aware — ventas solo ve stats de pedidos, admin ve todo
 - **Transacción** en admin/promotions.js POST: `conn.beginTransaction()` para promo + promotion_products
+- **CSP estricta activa** (`script-src 'self'`, `style-src 'self' + fonts`, sin `unsafe-inline`): nunca añadir `style=""`, `onclick=` ni `<script>` inline en HTML. Scripts a archivos `.js` externos; eventos admin via `data-action`/`data-id` + listener delegado (ver `admin.js`); estilos a `.css`; `backgroundImage` dinámica via CSSOM (`el.style.backgroundImage = ...`), no interpolada en template strings
 
 ---
 

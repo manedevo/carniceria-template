@@ -1,4 +1,10 @@
 require('dotenv').config();
+
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
+  console.error('FATAL: JWT_SECRET no configurado o demasiado corto. Saliendo.');
+  process.exit(1);
+}
+
 const express = require('express');
 const helmet  = require('helmet');
 const cors    = require('cors');
@@ -16,8 +22,31 @@ const app        = express();
 const PORT       = process.env.PORT       || 3000;
 const PUBLIC_DIR = process.env.PUBLIC_DIR || path.join(__dirname, '../public');
 
-app.use(helmet({ contentSecurityPolicy: false }));
-app.use(cors());
+// Topology: Internet → Nginx (1 hop) → Node. Allows express-rate-limit to read
+// the real client IP from X-Forwarded-For instead of 127.0.0.1.
+// If you remove Nginx or add another proxy layer, adjust this value accordingly.
+app.set('trust proxy', 1);
+
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc:  ["'self'"],
+      styleSrc:   ["'self'", 'https://fonts.googleapis.com'],
+      fontSrc:    ["'self'", 'https://fonts.gstatic.com'],
+      imgSrc:     ["'self'", 'data:'],
+      connectSrc: ["'self'"],
+    },
+  },
+}));
+// Restrict cross-origin requests to the configured domain.
+// Set ALLOWED_ORIGIN in .env (e.g. https://tutienda.es).
+// If unset, cross-origin requests are blocked for all origins.
+app.use(cors({
+  origin: process.env.ALLOWED_ORIGIN || false,
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 app.use(express.json());
 
 app.use(express.static(PUBLIC_DIR));

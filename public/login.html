@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Iniciar Sesión · Carnicería Artesanal</title>
-  <style>@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Montserrat:wght@300;500;800&display=swap');</style>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Montserrat:wght@300;500;800&display=swap" />
   <link rel="stylesheet" href="/assets/css/admin.css" />
 </head>
 <body>
@@ -67,7 +67,7 @@
       Auth.setToken(data.token);
       const params = new URLSearchParams(window.location.search);
       const ret    = params.get('return');
-      if (ret && ret.startsWith('/')) {
+      if (ret && ret.startsWith('/') && !ret.startsWith('//')) {
         window.location.href = ret;
       } else if (data.role === 'admin' || data.role === 'ventas') {
         window.location.href = '/admin/';

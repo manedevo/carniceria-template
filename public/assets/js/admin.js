@@ -258,12 +258,16 @@ async function submitNewPromo(e) {
 
 // ── Orders page ───────────────────────────────────────────────────────────────
 
-async function loadAdminOrders(filters = {}) {
+const ORDERS_LIMIT = 50;
+let _ordersOffset  = 0;
+
+async function loadAdminOrders(filters = {}, offset = 0) {
+  _ordersOffset = offset;
   const tbody = document.getElementById('ordersTbody');
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="8" style="padding:2rem;color:#888">Cargando...</td></tr>';
   try {
-    const params = new URLSearchParams(filters);
+    const params = new URLSearchParams({ ...filters, limit: ORDERS_LIMIT, offset });
     const res  = await Auth.apiFetch('/api/admin/orders?' + params);
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
@@ -305,6 +309,12 @@ async function loadAdminOrders(filters = {}) {
         </td>
       </tr>`;
     }).join('');
+    const prevBtn = document.getElementById('ordersPrev');
+    const nextBtn = document.getElementById('ordersNext');
+    const pageInfo = document.getElementById('ordersPageInfo');
+    if (prevBtn) prevBtn.disabled = offset === 0;
+    if (nextBtn) nextBtn.disabled = data.length < ORDERS_LIMIT;
+    if (pageInfo) pageInfo.textContent = `Página ${Math.floor(offset / ORDERS_LIMIT) + 1}`;
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="8" style="color:var(--danger);padding:1rem">${escHtml(err.message)}</td></tr>`;
   }
@@ -323,7 +333,7 @@ async function updateOrderStatus(id, status, sel) {
   const res = await Auth.apiFetch(`/api/admin/orders/${id}/status`, { method:'PUT', body: JSON.stringify({ status }) });
   showToast(res.ok ? `Estado → ${status}` : 'Error', res.ok);
   sel.value = '';
-  if (res.ok) loadAdminOrders(currentOrderFilters());
+  if (res.ok) loadAdminOrders(currentOrderFilters(), _ordersOffset);
 }
 
 function currentOrderFilters() {
@@ -342,21 +352,23 @@ function currentOrderFilters() {
 // ── Dashboard stats ───────────────────────────────────────────────────────────
 
 async function loadDashboard() {
-  const role = Auth.getUser()?.role;
+  const role  = Auth.getUser()?.role;
+  const today = new Date().toISOString().slice(0, 10);
 
   try {
-    // Pedidos: accesible para admin y ventas
-    const rOrders = await Auth.apiFetch('/api/admin/orders');
-    const orders  = await rOrders.json();
+    // Dos llamadas específicas en lugar de traer todos los pedidos históricos:
+    // 1. Pedidos pendientes (cualquier fecha) para la tarjeta de alertas
+    // 2. Pedidos de hoy para estadísticas diarias y tabla reciente
+    const [rPending, rToday] = await Promise.all([
+      Auth.apiFetch('/api/admin/orders?status=pendiente&limit=200'),
+      Auth.apiFetch(`/api/admin/orders?from=${today}&limit=200`),
+    ]);
+    const pendingOrders = await rPending.json();
+    const todayOrders   = await rToday.json();
 
-    const pending   = orders.filter(o => o.status === 'pendiente').length;
-    const todayStr  = new Date().toDateString();
-    const todayOrds = orders.filter(o => new Date(o.created_at).toDateString() === todayStr);
-    const todayRev  = todayOrds.reduce((s, o) => s + parseFloat(o.total), 0);
-
-    setStatCard('statPending', pending);
-    setStatCard('statTodayOrders', todayOrds.length);
-    setStatCard('statTodayRevenue', formatEur(todayRev));
+    setStatCard('statPending',      pendingOrders.length);
+    setStatCard('statTodayOrders',  todayOrders.length);
+    setStatCard('statTodayRevenue', formatEur(todayOrders.reduce((s, o) => s + parseFloat(o.total), 0)));
 
     // Productos y promociones: solo accesibles para admin
     if (role === 'admin') {
@@ -370,22 +382,21 @@ async function loadDashboard() {
       setStatCard('statActiveProducts', products.filter(p => p.active).length);
       setStatCard('statActivePromos',   promos.filter(p => p.active).length);
     } else {
-      // Ventas: ocultar tarjetas que no corresponden
       document.getElementById('statActiveProducts')?.closest('.stat-card')?.remove();
       document.getElementById('statActivePromos')?.closest('.stat-card')?.remove();
     }
 
-    // Últimos 5 pedidos
+    // Últimos 5 pedidos del día (ya vienen ordenados DESC por created_at)
     const tbody = document.getElementById('recentOrdersTbody');
     if (tbody) {
-      tbody.innerHTML = orders.slice(0, 5).map(o => `
+      tbody.innerHTML = todayOrders.slice(0, 5).map(o => `
         <tr>
           <td>#${o.id}</td>
           <td>${escHtml(o.customer_name)}</td>
           <td>${formatEur(o.total)}</td>
           <td>${statusBadge(o.status)}</td>
           <td>${new Date(o.created_at).toLocaleDateString('es-ES')}</td>
-        </tr>`).join('');
+        </tr>`).join('') || '<tr><td colspan="5" style="color:#888;padding:1rem">Sin pedidos hoy</td></tr>';
     }
   } catch (err) {
     console.error('Dashboard error:', err);
@@ -429,6 +440,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('newPromoForm')?.addEventListener('submit', submitNewPromo);
   document.getElementById('promoAppliesTo')?.addEventListener('change', e => handleAppliesToChange(e.target));
 
-  // Orders filter
-  document.getElementById('applyFilters')?.addEventListener('click', () => loadAdminOrders(currentOrderFilters()));
+  // Orders filter + pagination
+  document.getElementById('applyFilters')?.addEventListener('click', () => loadAdminOrders(currentOrderFilters(), 0));
+  document.getElementById('ordersPrev')?.addEventListener('click', () => loadAdminOrders(currentOrderFilters(), _ordersOffset - ORDERS_LIMIT));
+  document.getElementById('ordersNext')?.addEventListener('click', () => loadAdminOrders(currentOrderFilters(), _ordersOffset + ORDERS_LIMIT));
 });

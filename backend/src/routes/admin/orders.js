@@ -12,6 +12,9 @@ const VALID_STATUSES = ['pendiente', 'confirmado', 'en camino', 'entregado', 'ca
 router.get('/', async (req, res) => {
   try {
     const { status, zone, from, to } = req.query;
+    const limit  = Math.min(Math.max(parseInt(req.query.limit)  || 50, 1), 200);
+    const offset = Math.max(parseInt(req.query.offset) || 0, 0);
+
     let sql = `SELECT o.*, u.name AS user_name, u.email AS user_email
                FROM orders o LEFT JOIN users u ON o.user_id = u.id WHERE 1=1`;
     const params = [];
@@ -19,7 +22,9 @@ router.get('/', async (req, res) => {
     if (zone)   { sql += ' AND o.zone = ?';         params.push(zone); }
     if (from)   { sql += ' AND o.created_at >= ?';  params.push(from); }
     if (to)     { sql += ' AND o.created_at <= ?';  params.push(to + ' 23:59:59'); }
-    sql += ' ORDER BY o.created_at DESC';
+    sql += ' ORDER BY o.created_at DESC LIMIT ? OFFSET ?';
+    params.push(limit, offset);
+
     const [rows] = await db.query(sql, params);
     res.json(rows);
   } catch (err) {

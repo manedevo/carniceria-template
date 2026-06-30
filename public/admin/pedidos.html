@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Pedidos · Panel Admin</title>
-  <style>@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Montserrat:wght@300;500;800&display=swap');</style>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;1,600&family=Montserrat:wght@300;500;800&display=swap" />
   <link rel="stylesheet" href="/assets/css/admin.css" />
 </head>
 <body>
@@ -58,7 +58,7 @@
 
     <div class="table-card">
       <div style="overflow-x:auto">
-        <table class="data-table">
+        <table class="data-table" id="ordersTable">
           <thead>
             <tr>
               <th>#</th>
@@ -75,6 +75,11 @@
             <tr><td colspan="8" style="padding:2rem;color:#888">Cargando...</td></tr>
           </tbody>
         </table>
+      </div>
+      <div style="display:flex;align-items:center;gap:1rem;padding:1rem 0.5rem;border-top:1px solid #eee;margin-top:0.5rem">
+        <button class="btn-outline-sm" id="ordersPrev" disabled>← Anterior</button>
+        <span id="ordersPageInfo" style="font-size:.8rem;color:#888">Página 1</span>
+        <button class="btn-outline-sm" id="ordersNext">Siguiente →</button>
       </div>
     </div>
   </div>

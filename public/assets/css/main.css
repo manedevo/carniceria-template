@@ -830,3 +830,53 @@ img { max-width: 100%; display: block; }
 @media (max-width: 500px) {
   .products-grid { grid-template-columns: 1fr; }
 }
+
+/* ── mi-cuenta.html ──────────────────────────────────────────────────────── */
+.account-page { max-width: 900px; margin: 0 auto; padding: 4rem 2rem; }
+.account-header { margin-bottom: 3rem; }
+.account-header h2 { font-family: var(--font-title); font-size: 2.5rem; letter-spacing: 2px; }
+.account-header p  { color: var(--text-dim); font-size: .85rem; margin-top: .5rem; }
+.orders-list { list-style: none; }
+.order-card {
+  background: white;
+  border: 1px solid #e8e8e8;
+  margin-bottom: 1.25rem;
+  padding: 1.5rem;
+}
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: .75rem;
+  margin-bottom: .75rem;
+}
+.order-card-title { font-size: .75rem; font-weight: 800; letter-spacing: 1.5px; }
+.order-card-date  { font-size: .72rem; color: var(--text-dim); }
+.order-items-mini { font-size: .8rem; color: #555; line-height: 1.8; }
+.order-total      { font-weight: 800; font-size: .95rem; margin-top: .75rem; }
+.status-pill {
+  display: inline-block;
+  padding: .2rem .65rem;
+  font-size: .62rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  background: #e8e8e8;
+  color: #555;
+}
+.status-entregado { background: #d4edda; color: #155724; }
+.status-cancelado { background: #f8d7da; color: #721c24; }
+.status-confirmado { background: #d1ecf1; color: #0c5460; }
+.status-en-camino  { background: #d4edda; color: #155724; }
+.empty-state { text-align: center; padding: 4rem; color: var(--text-dim); font-style: italic; }
+.logout-link { display: inline-block; color: var(--text-dim); font-size: .78rem; cursor: pointer; }
+.logout-link:hover { color: var(--madrid-dark); }
+
+/* ── Utility classes ─────────────────────────────────────────────────────── */
+.mt-sm       { margin-top: .75rem; }
+.heading-left { text-align: left; margin-bottom: 2rem; }
+.title-sm    { font-size: 1.8rem; }
+.divider-tight { margin: 1rem 0 0; }
+.link-gold   { color: var(--madrid-gold); }
+.meta-line   { font-size: .72rem; color: var(--text-dim); margin-top: .3rem; }
+.error-text  { color: #c0392b; }

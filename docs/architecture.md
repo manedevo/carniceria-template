@@ -48,8 +48,8 @@ In Docker Compose the two services (`app` and `db`) share a user-defined bridge 
 Registers middleware in order:
 
 1. `trust proxy: 1` — tells Express there is exactly one proxy hop in front of it (Nginx). Without this, `express-rate-limit` sees every request as coming from `127.0.0.1` and the per-IP rate limit does not work in production. **If you change the deployment topology (e.g. add a CDN in front of Nginx), adjust this value to match the number of proxy hops.**
-2. `helmet()` — sets secure HTTP headers (CSP disabled to allow Google Fonts; see security changelog for planned hardening)
-3. `cors()` — open in current version; restrict `origin` to your domain for production
+2. `helmet()` — sets secure HTTP headers including an active Content Security Policy: `script-src 'self'`, `style-src 'self' https://fonts.googleapis.com`, `font-src 'self' https://fonts.gstatic.com`, `img-src 'self' data:`, `connect-src 'self'`. No `'unsafe-inline'` — all frontend JS and CSS is in external files.
+3. `cors()` — restricted to the origin in `ALLOWED_ORIGIN`. If the variable is not set, `false` blocks all cross-origin requests by default.
 4. `express.json()` — parses request bodies
 5. `express.static(PUBLIC_DIR)` — serves everything under `public/`
 6. Public API routes (products, orders, auth)
@@ -86,7 +86,7 @@ All routes under `/api/admin/*` apply `authenticate → requireRole(...)` as rou
 
 ## Frontend
 
-No bundler, no transpiler, no `node_modules` on the client. Three JS files cover the entire UI:
+No bundler, no transpiler, no `node_modules` on the client. Six JS files cover the entire UI:
 
 ### `public/assets/js/auth.js`
 
@@ -108,16 +108,26 @@ Storefront logic:
 - **Debounced search** — 320 ms delay prevents API flooding.
 - **Promo rendering** — reads `promo_name`, `promo_price`, `promo_applies_to` from product data; renders discount badges, strikethrough original price, and a top banner (global promos only; category/product promos show a generic message).
 - **Stock indicator** — renders "Quedan X kg/pieza" when `stock_enabled = 1`.
+- **CSDOM image assignment** — product `background-image` is set via `el.style.backgroundImage` after `innerHTML` render, not interpolated into the template string, to comply with the active CSP.
+
+### `public/assets/js/login.js` / `registro.js`
+
+Page-specific logic for `login.html` and `registro.html` respectively: redirect if already logged in, form submit handler, error display. Extracted from inline `<script>` blocks to comply with the active CSP.
+
+### `public/assets/js/mi-cuenta.js`
+
+Account page logic: session guard, order history fetch and render, delegated event listener for logout and navigation. Also extracted from an inline `<script>` block.
 
 ### `public/assets/js/admin.js`
 
 Loaded only on admin pages. Provides:
 
-- Table rendering for products, orders, and promotions
+- Table rendering for products, orders, and promotions — all interaction wired via `data-action`/`data-id` attributes and a single delegated `click` listener (and a `change` listener for the order status select). No `onclick=` attributes anywhere in the HTML.
 - Inline editing of price and stock
-- Modal open/close helpers
+- Modal open/close helpers (`openModal` / `closeModal`)
 - `loadDashboard()` — role-aware: fetches orders for all admin roles; fetches products and promotions only for `admin` (ventas sees those cards removed)
-- Order status update and expand/collapse row details
+- Order status update and expand/collapse row details (uses `classList.toggle('hidden')`)
+- `handlePromoNameSelect` — shows/hides the free-text promo name input when "Personalizado…" is selected
 
 ### Product images
 

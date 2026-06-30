@@ -86,7 +86,7 @@ Todas las rutas bajo `/api/admin/*` aplican `authenticate → requireRole(...)` 
 
 ## Frontend
 
-Sin bundler, sin transpilador, sin `node_modules` en el cliente. Tres archivos JS cubren toda la UI:
+Sin bundler, sin transpilador, sin `node_modules` en el cliente. Seis archivos JS cubren toda la UI:
 
 ### `public/assets/js/auth.js`
 
@@ -108,16 +108,26 @@ Lógica de la tienda:
 - **Búsqueda con debounce** — retardo de 320 ms para evitar aluvión de llamadas a la API.
 - **Renderizado de promos** — lee `promo_name`, `promo_price`, `promo_applies_to`; renderiza badges de descuento, precio original tachado y banner superior (solo para promos globales; las de categoría/producto muestran mensaje genérico).
 - **Indicador de stock** — muestra "Quedan X kg/pieza" cuando `stock_enabled = 1`.
+- **Asignación CSDOM de imágenes** — el `background-image` de cada producto se asigna vía `el.style.backgroundImage` tras el render de `innerHTML`, no interpolado en el template string, para cumplir con la CSP activa.
+
+### `public/assets/js/login.js` / `registro.js`
+
+Lógica específica de `login.html` y `registro.html`: redirección si ya hay sesión iniciada, manejador del formulario de submit, visualización de errores. Extraídos de bloques `<script>` inline para cumplir con la CSP activa.
+
+### `public/assets/js/mi-cuenta.js`
+
+Lógica de la página de cuenta: protección de sesión, carga y renderizado del historial de pedidos, listener delegado para cerrar sesión y navegar. También extraído de un bloque `<script>` inline.
 
 ### `public/assets/js/admin.js`
 
 Cargado solo en páginas admin. Proporciona:
 
-- Renderizado de tablas para productos, pedidos y promociones
+- Renderizado de tablas para productos, pedidos y promociones — toda la interacción cableada mediante atributos `data-action`/`data-id` y un único listener delegado de `click` (más un listener de `change` para el select de estado de pedido). Sin atributos `onclick=` en ningún HTML.
 - Edición inline de precio y stock
-- Helpers de apertura/cierre de modales
+- Helpers de apertura/cierre de modales (`openModal` / `closeModal`)
 - `loadDashboard()` — consciente del rol: obtiene pedidos para todos los roles admin; obtiene productos y promociones solo para `admin` (ventas tiene esas tarjetas eliminadas)
-- Actualización de estado de pedidos y expand/colapso de filas de detalle
+- Actualización de estado de pedidos y expand/colapso de filas de detalle (usa `classList.toggle('hidden')`)
+- `handlePromoNameSelect` — muestra/oculta el campo de nombre libre cuando se selecciona "Personalizado…"
 
 ### Imágenes de productos
 

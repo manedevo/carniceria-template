@@ -31,7 +31,7 @@
 
   <div class="admin-content">
     <!-- Filtros -->
-    <div class="table-card" style="padding:1.25rem 1.5rem;margin-bottom:1.25rem">
+    <div class="table-card filters-card">
       <div class="filters-bar">
         <select id="filterStatus">
           <option value="">Todos los estados</option>
@@ -57,7 +57,7 @@
     </div>
 
     <div class="table-card">
-      <div style="overflow-x:auto">
+      <div class="overflow-auto">
         <table class="data-table" id="ordersTable">
           <thead>
             <tr>
@@ -72,13 +72,13 @@
             </tr>
           </thead>
           <tbody id="ordersTbody">
-            <tr><td colspan="8" style="padding:2rem;color:#888">Cargando...</td></tr>
+            <tr><td colspan="8" class="loading-cell">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
-      <div style="display:flex;align-items:center;gap:1rem;padding:1rem 0.5rem;border-top:1px solid #eee;margin-top:0.5rem">
+      <div class="pagination-bar">
         <button class="btn-outline-sm" id="ordersPrev" disabled>← Anterior</button>
-        <span id="ordersPageInfo" style="font-size:.8rem;color:#888">Página 1</span>
+        <span id="ordersPageInfo" class="page-info">Página 1</span>
         <button class="btn-outline-sm" id="ordersNext">Siguiente →</button>
       </div>
     </div>

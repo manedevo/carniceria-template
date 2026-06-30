@@ -28,13 +28,13 @@
   <div class="admin-topbar">
     <span class="topbar-title">Gestión de Promociones</span>
     <div class="topbar-actions">
-      <button class="btn btn-gold" onclick="openModal('newPromoModal')">+ NUEVA PROMOCIÓN</button>
+      <button class="btn btn-gold" data-action="open-modal" data-modal="newPromoModal">+ NUEVA PROMOCIÓN</button>
     </div>
   </div>
 
   <div class="admin-content">
     <div class="table-card">
-      <div style="overflow-x:auto">
+      <div class="overflow-auto">
         <table class="data-table">
           <thead>
             <tr>
@@ -48,7 +48,7 @@
             </tr>
           </thead>
           <tbody id="promosTbody">
-            <tr><td colspan="7" style="padding:2rem;color:#888">Cargando...</td></tr>
+            <tr><td colspan="7" class="loading-cell">Cargando...</td></tr>
           </tbody>
         </table>
       </div>
@@ -58,7 +58,7 @@
 
 <!-- Modal nueva promoción -->
 <div class="modal-overlay hidden" id="newPromoModal">
-  <div class="modal" style="max-width:580px">
+  <div class="modal modal-sm">
     <div class="modal-header">
       <h3>Nueva Promoción</h3>
       <button class="modal-close">CERRAR</button>
@@ -68,7 +68,7 @@
         <div class="form-grid">
           <div class="form-field span-2">
             <label>Nombre de la promoción</label>
-            <select name="name" id="promoNameSelect" onchange="handlePromoNameSelect(this)">
+            <select name="name" id="promoNameSelect">
               <option value="">Seleccionar predefinido...</option>
               <option value="Promoción Fin de Semana">Promoción Fin de Semana</option>
               <option value="Black Friday">Black Friday</option>
@@ -78,7 +78,7 @@
               <option value="_custom">Personalizado...</option>
             </select>
             <input type="text" name="name" id="promoNameInput" placeholder="Nombre libre"
-              style="margin-top:.5rem;display:none" />
+              class="hidden mt-xs" />
           </div>
           <div class="form-field">
             <label>Tipo de descuento</label>
@@ -99,7 +99,7 @@
               <option value="producto">Productos concretos</option>
             </select>
           </div>
-          <div class="form-field span-2" id="promoCategoryField" style="display:none">
+          <div class="form-field span-2 hidden" id="promoCategoryField">
             <label>Categoría</label>
             <select name="category">
               <option value="Ternera">Ternera</option>
@@ -109,9 +109,9 @@
               <option value="Embutidos">Embutidos</option>
             </select>
           </div>
-          <div class="form-field span-2" id="promoProductsField" style="display:none">
+          <div class="form-field span-2 hidden" id="promoProductsField">
             <label>Productos (carga los IDs tras guardar)</label>
-            <p style="font-size:.75rem;color:var(--text-dim);margin-top:.3rem">
+            <p class="text-muted-sm">
               Selección por productos concretos disponible tras crear la promoción.
             </p>
           </div>
@@ -134,7 +134,7 @@
           </div>
         </div>
         <div class="form-actions">
-          <button type="button" class="btn-outline-sm modal-close" style="padding:.65rem 1.25rem">CANCELAR</button>
+          <button type="button" class="btn-outline-sm btn-cancel modal-close">CANCELAR</button>
           <button type="submit" class="btn btn-gold">CREAR PROMOCIÓN</button>
         </div>
       </form>
@@ -145,21 +145,5 @@
 <div class="toast" id="adminToast" hidden></div>
 <script src="/assets/js/auth.js"></script>
 <script src="/assets/js/admin.js"></script>
-<script>
-  function handlePromoNameSelect(sel) {
-    const inp = document.getElementById('promoNameInput');
-    if (sel.value === '_custom') {
-      inp.style.display = '';
-      inp.required = true;
-      inp.name = 'name';
-      sel.name = '_promoNameSelect';
-    } else {
-      inp.style.display = 'none';
-      inp.required = false;
-      inp.name = '';
-      sel.name = 'name';
-    }
-  }
-</script>
 </body>
 </html>

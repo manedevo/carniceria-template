@@ -32,7 +32,7 @@
   <div class="admin-topbar">
     <span class="topbar-title">Dashboard</span>
     <div class="topbar-actions">
-      <span style="font-size:.72rem;color:var(--text-dim)" id="topbarDate"></span>
+      <span class="topbar-date" id="topbarDate"></span>
     </div>
   </div>
 
@@ -65,7 +65,7 @@
     <div class="table-card">
       <div class="table-header">
         <h3>ÚLTIMOS PEDIDOS</h3>
-        <a href="/admin/pedidos.html" class="btn btn-primary" style="font-size:.62rem">VER TODOS</a>
+        <a href="/admin/pedidos.html" class="btn btn-primary btn-xs">VER TODOS</a>
       </div>
       <table class="data-table">
         <thead>
@@ -74,7 +74,7 @@
           </tr>
         </thead>
         <tbody id="recentOrdersTbody">
-          <tr><td colspan="5" style="padding:1.5rem;color:#888">Cargando...</td></tr>
+          <tr><td colspan="5" class="loading-cell">Cargando...</td></tr>
         </tbody>
       </table>
     </div>
@@ -85,9 +85,5 @@
 
 <script src="/assets/js/auth.js"></script>
 <script src="/assets/js/admin.js"></script>
-<script>
-  document.getElementById('topbarDate').textContent =
-    new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-</script>
 </body>
 </html>

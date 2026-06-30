@@ -241,9 +241,26 @@ a { color: inherit; text-decoration: none; }
 }
 .btn-primary { background: var(--madrid-dark); color: white; }
 .btn-primary:hover { background: var(--madrid-gray); }
-.btn-full { width: 100%; justify-content: center; }
+.btn-full   { width: 100%; justify-content: center; }
+.btn-xs     { font-size: .62rem; }
+.btn-cancel { padding: .65rem 1.25rem; }
 .ml-sm { margin-left: 4px; }
 .w-70  { width: 70px; }
+.mt-xs { margin-top: .5rem; }
+.topbar-date  { font-size: .72rem; color: var(--text-dim); }
+.text-muted-sm { font-size: .75rem; color: var(--text-dim); margin-top: .3rem; }
+.overflow-auto { overflow-x: auto; }
+.filters-card  { padding: 1.25rem 1.5rem; margin-bottom: 1.25rem; }
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0.5rem;
+  border-top: 1px solid #eee;
+  margin-top: 0.5rem;
+}
+.page-info { font-size: .8rem; color: #888; }
+.modal-sm  { max-width: 580px; }
 .btn-gold { background: var(--madrid-gold); color: white; }
 .btn-gold:hover { filter: brightness(1.1); }
 .btn-outline-sm {

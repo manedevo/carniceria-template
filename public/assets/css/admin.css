@@ -238,6 +238,7 @@ a { color: inherit; text-decoration: none; }
 }
 .btn-primary { background: var(--madrid-dark); color: white; }
 .btn-primary:hover { background: var(--madrid-gray); }
+.btn-full { width: 100%; justify-content: center; }
 .btn-gold { background: var(--madrid-gold); color: white; }
 .btn-gold:hover { filter: brightness(1.1); }
 .btn-outline-sm {

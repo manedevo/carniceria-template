@@ -191,6 +191,8 @@ ufw enable
 
 **No** abras el puerto 3000 a Internet — deja que Nginx lo proxifique.
 
+> **Nota sobre `trust proxy`:** La app tiene `app.set('trust proxy', 1)`, que asume la topología Internet → Nginx → Node (1 salto). Esto es necesario para que el limitador de velocidad (rate limiter) funcione por IP real. Si añades una CDN delante de Nginx (p. ej. Cloudflare), cambia el valor a `2` en `backend/index.js`. Si Node queda expuesto directamente a Internet sin proxy, elimina esa línea.
+
 ---
 
 ## Opción D — PM2 (sin Docker)
@@ -216,8 +218,10 @@ mysql -u root -p < /opt/carniceria-template/backend/database/schema.sql
 
 ```bash
 cp .env.example .env
-# establece DB_HOST=localhost, DB_PASSWORD y un JWT_SECRET generado
+# Establece DB_HOST=localhost, DB_PASSWORD y un JWT_SECRET generado:
 node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
+# Establece ALLOWED_ORIGIN con tu dominio público (p. ej. https://tutienda.es)
+# Si se deja vacío, las peticiones cross-origin quedan bloqueadas para todos los orígenes.
 ```
 
 ### 4. Instalar dependencias y arrancar con PM2
@@ -237,6 +241,35 @@ pm2 startup   # sigue el comando impreso para habilitar el inicio automático
 cd /opt/carniceria-template/backend
 node scripts/create-admin.js admin@tudominio.es MiContraseña123 "Nombre Admin"
 ```
+
+---
+
+## Migraciones de base de datos
+
+El esquema solo se aplica una vez en el primer arranque. Las actualizaciones que añadan índices o modifiquen tablas requieren ejecutar los archivos de migración manualmente.
+
+Los archivos de migración están en `backend/database/migrations/` y están numerados secuencialmente. Todos usan `IF NOT EXISTS` para que sea seguro re-ejecutarlos.
+
+### Aplicar una migración (Docker)
+
+```bash
+docker compose exec db mariadb \
+  -u carniceria -p"${DB_PASSWORD}" carniceria_db \
+  < backend/database/migrations/001_add_indexes.sql
+```
+
+### Aplicar una migración (PM2 / bare metal)
+
+```bash
+mariadb -u carniceria -p carniceria_db \
+  < backend/database/migrations/001_add_indexes.sql
+```
+
+### Migraciones disponibles
+
+| Archivo | Descripción |
+|---|---|
+| `001_add_indexes.sql` | Añade índices de rendimiento en `orders.status`, `orders.created_at` y `promotions(active, starts_at, ends_at)` |
 
 ---
 

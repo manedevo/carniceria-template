@@ -136,6 +136,8 @@ curl -fsSL https://raw.githubusercontent.com/manedevo/carniceria-template/master
 - **localStorage para JWT:** tradeoff consciente por simplicidad; mover a `httpOnly` cookie es S-01 en el backlog
 - `user_id = NULL` en orders = pedido anónimo (retrocompatible)
 - FK ordering en schema.sql: `users` debe ir ANTES que `orders` (error histórico ya corregido)
+- **`trust proxy: 1`** hardcodeado en `index.js` — asume topología Internet → Nginx → Node (1 hop). Si se añade CDN delante ajustar a 2; si Node queda expuesto directamente a Internet eliminar la línea. Ver `docs/deployment.md`
+- **Precios calculados en servidor** (`orders.js`) — `item.price` del cliente se descarta; se consulta `products.price` en BD por cada item antes de insertar el pedido. Ver `docs/security_changelog.md`
 
 ---
 
@@ -143,5 +145,6 @@ curl -fsSL https://raw.githubusercontent.com/manedevo/carniceria-template/master
 
 - `docs/architecture.md` / `docs/es/arquitectura.md`
 - `docs/deployment.md` / `docs/es/despliegue.md`
+- `docs/security_changelog.md` — historial de correcciones de seguridad aplicadas
 - `tasks/informe-implementacion.md` — tickets, troubleshooting, sugerencias
 - `tasks/plan-mejoras-app.md` — plan original de las 4 fases

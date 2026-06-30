@@ -47,13 +47,14 @@ In Docker Compose the two services (`app` and `db`) share a user-defined bridge 
 
 Registers middleware in order:
 
-1. `helmet()` — sets secure HTTP headers (CSP disabled to allow Google Fonts)
-2. `cors()` — permissive in development; tighten the `origin` option for production
-3. `express.json()` — parses request bodies
-4. `express.static(PUBLIC_DIR)` — serves everything under `public/`
-5. Public API routes (products, orders, auth)
-6. Protected API routes (admin/*, user/*)
-7. Catch-all `*` — returns `index.html` for client-side navigation
+1. `trust proxy: 1` — tells Express there is exactly one proxy hop in front of it (Nginx). Without this, `express-rate-limit` sees every request as coming from `127.0.0.1` and the per-IP rate limit does not work in production. **If you change the deployment topology (e.g. add a CDN in front of Nginx), adjust this value to match the number of proxy hops.**
+2. `helmet()` — sets secure HTTP headers (CSP disabled to allow Google Fonts; see security changelog for planned hardening)
+3. `cors()` — open in current version; restrict `origin` to your domain for production
+4. `express.json()` — parses request bodies
+5. `express.static(PUBLIC_DIR)` — serves everything under `public/`
+6. Public API routes (products, orders, auth)
+7. Protected API routes (admin/*, user/*)
+8. Catch-all `*` — returns `index.html` for client-side navigation
 
 ### Database — `backend/src/config/database.js`
 
@@ -215,7 +216,8 @@ Both services share the `carniceria_net` bridge network. Neither container runs 
 The application follows a defence-in-depth approach:
 
 1. **Transport** — HTTPS enforced via Nginx in production; HTTP Strict Transport Security header set by `helmet`.
-2. **Authentication** — Passwords hashed with bcrypt (cost 12). Login rate-limited to 10 attempts / 15 min per IP.
+2. **Authentication** — Passwords hashed with bcrypt (cost 12). Login rate-limited to 10 attempts / 15 min per IP. `trust proxy: 1` ensures the rate limiter sees real client IPs behind Nginx.
 3. **Authorisation** — JWT verified on every protected request server-side; role checked per route. Client-side `requireAuth` provides UX-only gating (not a security boundary).
-4. **Input handling** — All SQL parameters use `?` placeholders. All HTML output escapes via `escHtml()`.
+4. **Input handling** — All SQL parameters use `?` placeholders. All HTML output escapes via `escHtml()`. Order prices are calculated server-side from the database — client-supplied prices are ignored.
 5. **Secrets** — All credentials in `.env` (`.gitignore` enforced). `JWT_SECRET` must be 64 random bytes.
+6. **Redirect safety** — Post-login `?return=` parameter is validated to allow only same-origin paths (must start with `/` and not `//`).

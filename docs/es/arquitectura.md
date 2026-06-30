@@ -47,13 +47,14 @@ En Docker Compose, los dos servicios (`app` y `db`) comparten una red bridge def
 
 Registra el middleware en orden:
 
-1. `helmet()` — cabeceras HTTP seguras (CSP desactivado para permitir Google Fonts)
-2. `cors()` — permisivo en desarrollo; ajusta la opción `origin` para producción
-3. `express.json()` — parsea los cuerpos de las peticiones
-4. `express.static(PUBLIC_DIR)` — sirve todo lo que hay bajo `public/`
-5. Rutas de API públicas (products, orders, auth)
-6. Rutas de API protegidas (admin/*, user/*)
-7. Catch-all `*` — devuelve `index.html` para la navegación del lado del cliente
+1. `trust proxy: 1` — indica a Express que hay exactamente un proxy delante (Nginx). Sin esto, `express-rate-limit` vería todas las peticiones como `127.0.0.1` y la protección anti-fuerza bruta por IP no funcionaría. **Si cambias la topología de despliegue (p. ej. añades una CDN delante de Nginx), ajusta este valor al número de saltos real.**
+2. `helmet()` — cabeceras HTTP seguras, con CSP (Política de Seguridad de Contenido) activa. Permite solo scripts y estilos propios más Google Fonts.
+3. `cors()` — restringido al dominio configurado en `ALLOWED_ORIGIN`. Si la variable no está definida, las peticiones cross-origin quedan bloqueadas para todos los orígenes.
+4. `express.json()` — parsea los cuerpos de las peticiones
+5. `express.static(PUBLIC_DIR)` — sirve todo lo que hay bajo `public/`
+6. Rutas de API públicas (products, orders, auth)
+7. Rutas de API protegidas (admin/*, user/*)
+8. Catch-all `*` — devuelve `index.html` para la navegación del lado del cliente
 
 ### Base de datos — `backend/src/config/database.js`
 
@@ -214,8 +215,11 @@ Ambos servicios comparten la red bridge `carniceria_net`. Ningún contenedor se 
 
 La aplicación sigue un enfoque de defensa en profundidad:
 
-1. **Transporte** — HTTPS forzado vía Nginx en producción; cabecera HSTS establecida por `helmet`.
-2. **Autenticación** — Contraseñas hasheadas con bcrypt (coste 12). Login limitado a 10 intentos / 15 min por IP.
+1. **Transporte** — HTTPS forzado vía Nginx en producción; cabecera HSTS (Seguridad de Transporte Estricto por HTTP) establecida por `helmet`.
+2. **Autenticación** — Contraseñas hasheadas con bcrypt (coste 12). Login limitado a 10 intentos / 15 min por IP. `trust proxy: 1` garantiza que el limitador ve la IP real del cliente detrás de Nginx. `POST /api/orders` limitado a 4 pedidos por minuto por IP.
 3. **Autorización** — JWT verificado en cada petición protegida en el servidor; rol comprobado por ruta. El `requireAuth` del cliente proporciona protección UX únicamente (no es un límite de seguridad real).
-4. **Manejo de entrada** — Todos los parámetros SQL usan marcadores `?`. Toda salida HTML se escapa con `escHtml()`.
-5. **Secretos** — Todas las credenciales en `.env` (`.gitignore` garantizado). `JWT_SECRET` debe ser de 64 bytes aleatorios.
+4. **Manejo de entrada** — Todos los parámetros SQL usan marcadores `?`. Toda salida HTML se escapa con `escHtml()`. Los precios se calculan en el servidor consultando `products.price` en la base de datos — el precio que envía el cliente se ignora. Los campos de pedido tienen límites de longitud validados antes de tocar la base de datos.
+5. **Secretos** — Todas las credenciales en `.env` (`.gitignore` garantizado). `JWT_SECRET` debe ser de 64 bytes aleatorios. `ALLOWED_ORIGIN` restringe las peticiones cross-origin al dominio propio.
+6. **Cabeceras de seguridad** — CSP activa (scripts y estilos solo del propio dominio + Google Fonts), CORS restringido por `ALLOWED_ORIGIN`, `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy` y HSTS en Nginx.
+7. **Redirección segura** — El parámetro `?return=` post-login solo acepta rutas relativas internas (`/ruta`) — bloquea redirecciones a dominios externos incluyendo el protocolo relativo (`//evil.com`).
+8. **Contenedor sin privilegios** — El proceso Node corre como usuario `node` (uid=1000) dentro del contenedor Docker, no como root.

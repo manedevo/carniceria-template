@@ -192,6 +192,8 @@ ufw enable
 
 Do **not** open port 3000 to the internet — let Nginx proxy it.
 
+> **`trust proxy` note:** The Express app is hardcoded with `app.set('trust proxy', 1)`, which assumes exactly one proxy hop (Nginx → Node). This is correct for this deployment topology and required for per-IP rate limiting to work. If you add another proxy layer in front (e.g. a CDN like Cloudflare), update that value in `backend/index.js` to match the total number of hops.
+
 ---
 
 ## Option D — PM2 (no Docker)
@@ -264,6 +266,35 @@ module.exports = {
 ```
 
 Then: `pm2 start ecosystem.config.js`
+
+---
+
+## Database migrations
+
+The schema is applied only once on first boot. Subsequent updates that add indexes or alter tables require running migration files manually.
+
+Migration files live in `backend/database/migrations/` and are numbered sequentially. All migrations use `IF NOT EXISTS` / `IF NOT EXISTS` guards so they are safe to re-run.
+
+### Apply a migration (Docker)
+
+```bash
+docker compose exec db mariadb \
+  -u carniceria -p"${DB_PASSWORD}" carniceria_db \
+  < backend/database/migrations/001_add_indexes.sql
+```
+
+### Apply a migration (PM2 / bare metal)
+
+```bash
+mariadb -u carniceria -p carniceria_db \
+  < backend/database/migrations/001_add_indexes.sql
+```
+
+### Available migrations
+
+| File | Description |
+|---|---|
+| `001_add_indexes.sql` | Adds performance indexes on `orders.status`, `orders.created_at`, and `promotions(active, starts_at, ends_at)` |
 
 ---
 

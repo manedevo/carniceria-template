@@ -97,6 +97,11 @@ NODE_ENV=production
 JWT_SECRET=${jwt_secret}
 JWT_EXPIRES_IN=8h
 BCRYPT_ROUNDS=12
+
+# CORS — set to your public domain to restrict cross-origin requests.
+# Example: https://tutienda.es
+# Leave empty to block all cross-origin requests (safest default).
+ALLOWED_ORIGIN=
 EOF
     chmod 600 "$ENV_FILE"
     info ".env created (passwords auto-generated)."

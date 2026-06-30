@@ -124,3 +124,13 @@ INSERT INTO products (name, category, price, note, image_url) VALUES
 ('Chorizo artesanal de cerdo',  'Embutidos',12.50, 'Elaborado con pimentón de la Vera y especias propias', 'v2_watermarked-be56e688-6f20-40a8-9af1-cbc653790c56.jpg'),
 ('Chorizo de pollo con hierbas','Embutidos',11.20, 'Más ligero, con tomillo y orégano frescos',            'v2_watermarked-be56e688-6f20-40a8-9af1-cbc653790c56.jpg'),
 ('Chorizo de cordero',          'Embutidos',13.50, 'Sabor intenso, toque de comino y pimentón suave',      'v2_watermarked-be56e688-6f20-40a8-9af1-cbc653790c56.jpg');
+
+-- ─── Índices de rendimiento ───────────────────────────────────────────────────
+-- IF NOT EXISTS permite re-ejecutar este script sin errores en instalaciones existentes.
+-- Nota: orders.user_id ya tiene índice implícito creado por InnoDB al definir la FK.
+
+CREATE INDEX IF NOT EXISTS idx_orders_status     ON orders(status);
+CREATE INDEX IF NOT EXISTS idx_orders_created_at ON orders(created_at);
+-- Índice compuesto para la búsqueda de promociones activas (se ejecuta una vez por
+-- producto en cada carga de la tienda — N+1 conocido, ver T-04 en CLAUDE.md)
+CREATE INDEX IF NOT EXISTS idx_promos_active     ON promotions(active, starts_at, ends_at);

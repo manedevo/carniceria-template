@@ -59,7 +59,7 @@ function renderCartPanel() {
     const div = document.createElement('div');
     div.className = 'cart-item-row';
     div.innerHTML = `
-      <div style="flex:1">
+      <div class="cart-item-info">
         <p class="cart-item-name">${escHtml(item.name)}</p>
         <p class="cart-item-sub">${formatEur(item.price)}/kg</p>
       </div>
@@ -93,7 +93,7 @@ function renderCartInline() {
     const li = document.createElement('li');
     li.innerHTML = `
       <div class="cart-item-row">
-        <div style="flex:1">
+        <div class="cart-item-info">
           <p class="cart-item-name">${escHtml(item.name)}</p>
           <p class="cart-item-sub">${formatEur(item.price)}/kg</p>
         </div>
@@ -214,20 +214,16 @@ function renderProducts(products) {
         ? `−${globalPromo.promo_value}%`
         : `−${formatEur(globalPromo.promo_value)}`;
       banner.textContent = `PROMOCIÓN ACTIVA: ${escHtml(globalPromo.promo_name)} · ${disc} EN TODA LA SELECCIÓN`;
-      banner.style.display = '';
+      banner.style.display = 'block';
     } else if (anyPromo) {
       banner.textContent = `PROMOCIÓN ACTIVA: ${escHtml(anyPromo.promo_name)} · Selección especial con descuento`;
-      banner.style.display = '';
+      banner.style.display = 'block';
     } else {
-      banner.style.display = 'none';
+      banner.style.display = '';
     }
   }
 
   grid.innerHTML = products.map(p => {
-    const imgStyle = p.image_url
-      ? `background-image: url('/assets/img_realistas/${escHtml(p.image_url)}');`
-      : '';
-
     const unitLabel = p.unit_type === 'pieza' ? '/pieza' : '/kg';
     const effectivePrice = p.promo_price != null ? p.promo_price : p.price;
 
@@ -251,9 +247,9 @@ function renderProducts(products) {
       : '';
 
     return `
-      <article class="product-card" data-id="${p.id}" style="position:relative">
+      <article class="product-card" data-id="${p.id}">
         ${promoBadgeHtml}
-        <div class="product-img" style="${imgStyle}" role="img" aria-label="${escHtml(p.name)}"></div>
+        <div class="product-img" data-image="${escHtml(p.image_url || '')}" role="img" aria-label="${escHtml(p.name)}"></div>
         <div class="product-body">
           <p class="product-category">${escHtml(p.category || '')}</p>
           <p class="product-name">${escHtml(p.name)}</p>
@@ -267,6 +263,12 @@ function renderProducts(products) {
         </div>
       </article>`;
   }).join('');
+
+  grid.querySelectorAll('.product-img[data-image]').forEach(el => {
+    if (el.dataset.image) {
+      el.style.backgroundImage = `url('/assets/img_realistas/${el.dataset.image}')`;
+    }
+  });
 }
 
 function handleAddToCart(e) {

@@ -634,6 +634,7 @@ img { max-width: 100%; display: block; }
   border-bottom: 1px solid #eee;
 }
 .cart-item-row:last-child { border-bottom: none; }
+.cart-item-info { flex: 1; }
 .cart-item-name { font-weight: 600; font-size: 0.88rem; margin-bottom: 0.2rem; }
 .cart-item-sub  { font-size: 0.75rem; color: var(--text-dim); }
 .cart-item-price { font-weight: 800; font-size: 0.9rem; white-space: nowrap; }
@@ -741,6 +742,7 @@ img { max-width: 100%; display: block; }
 
 /* ── Promo banner / badges ───────────────────────────────────────────────── */
 .promo-banner {
+  display: none;
   background: #c5a059;
   color: white;
   text-align: center;

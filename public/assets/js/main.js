@@ -338,10 +338,9 @@ async function submitOrder(e) {
   const msgEl = document.getElementById('orderMessage');
 
   try {
-    const res = await fetch('/api/orders', {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body),
+    const res = await Auth.apiFetch('/api/orders', {
+      method: 'POST',
+      body:   JSON.stringify(body),
     });
 
     const data = await res.json();

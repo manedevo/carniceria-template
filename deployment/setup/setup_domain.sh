@@ -171,9 +171,41 @@ else
 fi
 
 # ─────────────────────────────────────────────────────────────────────────────
-# PASO 7 — Renovación automática del certificado
+# PASO 7 — Headers de seguridad en Nginx
 # ─────────────────────────────────────────────────────────────────────────────
-step "7. Configurando renovación automática"
+step "7. Añadiendo headers de seguridad"
+
+mkdir -p /etc/nginx/snippets
+cat > /etc/nginx/snippets/carniceria-security.conf <<'SECEOF'
+# Evita que la página sea embebida en un iframe de otro dominio (clickjacking)
+add_header X-Frame-Options "SAMEORIGIN" always;
+# Evita que el navegador adivine el tipo de contenido (MIME sniffing)
+add_header X-Content-Type-Options "nosniff" always;
+# Controla qué URL se envía en el header Referer a otros sitios
+add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+# Fuerza HTTPS durante 1 año en el navegador del usuario (HSTS)
+add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+# Limita el tamaño del cuerpo de las peticiones a 1 MB
+client_max_body_size 1m;
+SECEOF
+
+NGINX_CONF="/etc/nginx/sites-available/${DOMAIN}"
+
+if grep -q "ssl_certificate" "$NGINX_CONF" && ! grep -q "carniceria-security" "$NGINX_CONF"; then
+    # Inyectar el include justo después de la línea ssl_certificate del bloque HTTPS
+    sed -i "/ssl_certificate /a\\    include /etc/nginx/snippets/carniceria-security.conf;" "$NGINX_CONF"
+    nginx -t && systemctl reload nginx
+    info "Headers de seguridad añadidos al bloque HTTPS."
+else
+    warn "Bloque HTTPS no encontrado (Certbot no completó o ya estaban aplicados)."
+    warn "El snippet /etc/nginx/snippets/carniceria-security.conf está creado."
+    warn "Vuelve a ejecutar este script cuando el DNS propague para inyectarlos."
+fi
+
+# ─────────────────────────────────────────────────────────────────────────────
+# PASO 8 — Renovación automática del certificado
+# ─────────────────────────────────────────────────────────────────────────────
+step "8. Configurando renovación automática"
 
 # Let's Encrypt caduca cada 90 días — renovamos automáticamente cada noche
 if systemctl list-timers 2>/dev/null | grep -q certbot; then
@@ -197,8 +229,9 @@ echo -e "  https://${DOMAIN}"
 echo -e "  https://${WWW_DOMAIN}"
 echo ""
 echo -e "  Comandos útiles:"
-echo -e "    sudo nginx -t                   — verificar configuración"
-echo -e "    sudo systemctl reload nginx     — recargar Nginx sin cortar"
-echo -e "    sudo certbot certificates       — ver certificados activos"
-echo -e "    sudo certbot renew --dry-run    — simular renovación"
+echo -e "    sudo nginx -t                                    — verificar configuración"
+echo -e "    sudo systemctl reload nginx                      — recargar Nginx sin cortar"
+echo -e "    sudo certbot certificates                        — ver certificados activos"
+echo -e "    sudo certbot renew --dry-run                     — simular renovación"
+echo -e "    cat /etc/nginx/snippets/carniceria-security.conf — ver headers de seguridad"
 echo ""

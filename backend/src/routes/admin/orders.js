@@ -1,8 +1,9 @@
-const express      = require('express');
-const router       = express.Router();
-const db           = require('../../config/database');
-const authenticate = require('../../middleware/authenticate');
-const requireRole  = require('../../middleware/requireRole');
+const express         = require('express');
+const router          = express.Router();
+const db              = require('../../config/database');
+const authenticate    = require('../../middleware/authenticate');
+const requireRole     = require('../../middleware/requireRole');
+const hasPermission   = require('../../middleware/hasPermission');
 
 router.use(authenticate, requireRole('admin', 'ventas'));
 
@@ -48,8 +49,8 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// PUT /api/admin/orders/:id/status — solo admin
-router.put('/:id/status', requireRole('admin'), async (req, res) => {
+// PUT /api/admin/orders/:id/status — admin o ventas con permiso change_order_status
+router.put('/:id/status', requireRole('admin', 'ventas'), hasPermission('change_order_status'), async (req, res) => {
   try {
     const { status } = req.body;
     if (!VALID_STATUSES.includes(status)) {

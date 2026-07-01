@@ -52,13 +52,17 @@ document.addEventListener('click', e => {
   if (!el) return;
   const action = el.dataset.action;
   const id     = el.dataset.id !== undefined ? parseInt(el.dataset.id, 10) : null;
-  if (action === 'save-product')   saveProductInline(id, el);
-  if (action === 'edit-product')   openEditModal(id);
-  if (action === 'delete-product') deleteProduct(id);
-  if (action === 'toggle-promo')   togglePromo(id, parseInt(el.dataset.active, 10));
-  if (action === 'delete-promo')   deletePromo(id);
-  if (action === 'expand-order')   expandOrderRow(id, el);
-  if (action === 'open-modal')     openModal(el.dataset.modal);
+  if (action === 'save-product')              saveProductInline(id, el);
+  if (action === 'save-stock')                saveStockInline(id, el);
+  if (action === 'edit-product')              openEditModal(id);
+  if (action === 'delete-product')            deleteProduct(id);
+  if (action === 'toggle-promo')              togglePromo(id, parseInt(el.dataset.active, 10));
+  if (action === 'delete-promo')              deletePromo(id);
+  if (action === 'expand-order')              expandOrderRow(id, el);
+  if (action === 'open-modal')                openModal(el.dataset.modal);
+  if (action === 'edit-user-permissions')     openUserPermissionsModal(id);
+  if (action === 'toggle-user')               toggleUserActive(id, el.dataset.active === '0');
+  if (action === 'delete-user')               deleteUser(id);
 });
 
 document.addEventListener('change', e => {
@@ -77,35 +81,45 @@ async function loadAdminProducts() {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
 
-    tbody.innerHTML = data.map(p => `
-      <tr data-id="${p.id}">
-        <td>${escHtml(p.name)}</td>
-        <td>${escHtml(p.category)}</td>
-        <td>${escHtml(p.unit_type)}</td>
-        <td>
-          <input class="inline-input w-70" type="number" step="0.01" min="0"
-            value="${p.price}" data-field="price" />
-        </td>
-        <td>
-          <input class="inline-input w-70" type="number" step="0.001" min="0"
-            value="${p.stock_qty ?? ''}" data-field="stock_qty" placeholder="—" />
-          <label class="toggle ml-sm" title="Control de stock activo">
-            <input type="checkbox" data-field="stock_enabled" ${p.stock_enabled ? 'checked' : ''} />
-            <span class="toggle-slider"></span>
-          </label>
-        </td>
-        <td>
-          <label class="toggle">
-            <input type="checkbox" data-field="active" ${p.active ? 'checked' : ''} />
-            <span class="toggle-slider"></span>
-          </label>
-        </td>
-        <td>
-          <button class="btn-outline-sm" data-action="save-product" data-id="${p.id}">Guardar</button>
-          <button class="btn-outline-sm ml-sm" data-action="edit-product" data-id="${p.id}">Editar</button>
-          <button class="btn-danger-sm ml-sm"  data-action="delete-product" data-id="${p.id}">Baja</button>
-        </td>
-      </tr>`).join('');
+    const isVentas = Auth.getUser()?.role === 'ventas';
+
+    tbody.innerHTML = data.map(p => {
+      const priceCell = isVentas
+        ? `<span>${formatEur(p.price)}</span>`
+        : `<input class="inline-input w-70" type="number" step="0.01" min="0"
+             value="${p.price}" data-field="price" />`;
+
+      const activeCell = isVentas
+        ? `<span>${p.active ? 'Sí' : 'No'}</span>`
+        : `<label class="toggle">
+             <input type="checkbox" data-field="active" ${p.active ? 'checked' : ''} />
+             <span class="toggle-slider"></span>
+           </label>`;
+
+      const actions = isVentas
+        ? `<button class="btn-outline-sm" data-action="save-stock" data-id="${p.id}">Guardar stock</button>`
+        : `<button class="btn-outline-sm" data-action="save-product" data-id="${p.id}">Guardar</button>
+           <button class="btn-outline-sm ml-sm" data-action="edit-product" data-id="${p.id}">Editar</button>
+           <button class="btn-danger-sm ml-sm"  data-action="delete-product" data-id="${p.id}">Baja</button>`;
+
+      return `
+        <tr data-id="${p.id}">
+          <td>${escHtml(p.name)}</td>
+          <td>${escHtml(p.category)}</td>
+          <td>${escHtml(p.unit_type)}</td>
+          <td>${priceCell}</td>
+          <td>
+            <input class="inline-input w-70" type="number" step="0.001" min="0"
+              value="${p.stock_qty ?? ''}" data-field="stock_qty" placeholder="—" />
+            <label class="toggle ml-sm" title="Control de stock activo">
+              <input type="checkbox" data-field="stock_enabled" ${p.stock_enabled ? 'checked' : ''} />
+              <span class="toggle-slider"></span>
+            </label>
+          </td>
+          <td>${activeCell}</td>
+          <td>${actions}</td>
+        </tr>`;
+    }).join('');
   } catch (err) {
     tbody.innerHTML = `<tr><td colspan="8" class="error-cell">${escHtml(err.message)}</td></tr>`;
   }
@@ -125,6 +139,18 @@ async function saveProductInline(id, btn) {
   showToast(res.ok ? 'Guardado' : 'Error al guardar', res.ok);
 }
 
+async function saveStockInline(id, btn) {
+  const row           = btn.closest('tr');
+  const stock_qty     = row.querySelector('[data-field=stock_qty]').value;
+  const stock_enabled = row.querySelector('[data-field=stock_enabled]').checked;
+
+  const res = await Auth.apiFetch(`/api/admin/products/${id}/stock`, {
+    method: 'PATCH',
+    body: JSON.stringify({ stock_qty: stock_qty !== '' ? parseFloat(stock_qty) : null, stock_enabled }),
+  });
+  showToast(res.ok ? 'Stock actualizado' : 'Error al guardar stock', res.ok);
+}
+
 async function deleteProduct(id) {
   if (!confirm('¿Dar de baja este producto?')) return;
   const res = await Auth.apiFetch(`/api/admin/products/${id}`, { method: 'DELETE' });
@@ -132,7 +158,6 @@ async function deleteProduct(id) {
   if (res.ok) loadAdminProducts();
 }
 
-// Datos completos del producto actual para el modal de edición
 let editingProduct = null;
 
 async function openEditModal(id) {
@@ -306,6 +331,8 @@ async function loadAdminOrders(filters = {}, offset = 0) {
     const data = await res.json();
     if (!res.ok) throw new Error(data.error);
 
+    const canChangeStatus = Auth.isAdmin() || Auth.isVentas();
+
     tbody.innerHTML = data.map(o => {
       const items = typeof o.items === 'string' ? JSON.parse(o.items) : o.items;
       const count = items.reduce((s, i) => s + i.qty, 0);
@@ -319,7 +346,7 @@ async function loadAdminOrders(filters = {}, offset = 0) {
         <td>${new Date(o.created_at).toLocaleDateString('es-ES')}</td>
         <td>
           <button class="btn-outline-sm" data-action="expand-order" data-id="${o.id}">Detalles</button>
-          ${Auth.isAdmin() ? `
+          ${canChangeStatus ? `
           <select class="btn-outline-sm ml-sm" data-action="update-status" data-id="${o.id}">
             <option value="">Estado...</option>
             <option value="pendiente">Pendiente</option>
@@ -389,9 +416,6 @@ async function loadDashboard() {
   const today = new Date().toISOString().slice(0, 10);
 
   try {
-    // Dos llamadas específicas en lugar de traer todos los pedidos históricos:
-    // 1. Pedidos pendientes (cualquier fecha) para la tarjeta de alertas
-    // 2. Pedidos de hoy para estadísticas diarias y tabla reciente
     const [rPending, rToday] = await Promise.all([
       Auth.apiFetch('/api/admin/orders?status=pendiente&limit=200'),
       Auth.apiFetch(`/api/admin/orders?from=${today}&limit=200`),
@@ -403,7 +427,6 @@ async function loadDashboard() {
     setStatCard('statTodayOrders',  todayOrders.length);
     setStatCard('statTodayRevenue', formatEur(todayOrders.reduce((s, o) => s + parseFloat(o.total), 0)));
 
-    // Productos y promociones: solo accesibles para admin
     if (role === 'admin') {
       const [rProducts, rPromos] = await Promise.all([
         Auth.apiFetch('/api/admin/products'),
@@ -419,7 +442,6 @@ async function loadDashboard() {
       document.getElementById('statActivePromos')?.closest('.stat-card')?.remove();
     }
 
-    // Últimos 5 pedidos del día (ya vienen ordenados DESC por created_at)
     const tbody = document.getElementById('recentOrdersTbody');
     if (tbody) {
       tbody.innerHTML = todayOrders.slice(0, 5).map(o => `
@@ -441,6 +463,112 @@ function setStatCard(id, val) {
   if (el) el.textContent = val;
 }
 
+// ── Users page ────────────────────────────────────────────────────────────────
+
+async function loadAdminUsers() {
+  const tbody = document.getElementById('usersTbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="6" class="loading-cell">Cargando...</td></tr>';
+  try {
+    const res  = await Auth.apiFetch('/api/admin/users');
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error);
+
+    const currentId = Auth.getUser()?.id;
+
+    tbody.innerHTML = data.map(u => {
+      const perms = u.permissions
+        ? (typeof u.permissions === 'string' ? JSON.parse(u.permissions) : u.permissions)
+        : null;
+
+      const permBadges = u.role === 'ventas'
+        ? `<span class="badge-perm ${perms?.change_order_status !== false ? 'perm-on' : 'perm-off'}" title="Cambiar estado pedido">Estado</span>
+           <span class="badge-perm ${perms?.change_stock !== false ? 'perm-on' : 'perm-off'}" title="Cambiar stock">Stock</span>`
+        : '—';
+
+      const activeBadge = u.active
+        ? '<span class="badge-status badge-confirmado">ACTIVO</span>'
+        : '<span class="badge-status badge-cancelado">INACTIVO</span>';
+
+      const isSelf = u.id === currentId;
+
+      return `<tr>
+        <td>${u.id}</td>
+        <td>${escHtml(u.name || '—')}</td>
+        <td>${escHtml(u.email)}</td>
+        <td><span class="badge-role badge-role-${escHtml(u.role)}">${escHtml(u.role.toUpperCase())}</span></td>
+        <td>${activeBadge}</td>
+        <td>${permBadges}</td>
+        <td>
+          ${u.role === 'ventas' ? `<button class="btn-outline-sm" data-action="edit-user-permissions" data-id="${u.id}">Permisos</button>` : ''}
+          ${!isSelf ? `<button class="btn-outline-sm ml-sm" data-action="toggle-user" data-id="${u.id}" data-active="${u.active}">${u.active ? 'Desactivar' : 'Activar'}</button>` : ''}
+          ${!isSelf ? `<button class="btn-danger-sm ml-sm" data-action="delete-user" data-id="${u.id}">Eliminar</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="6" class="error-cell">${escHtml(err.message)}</td></tr>`;
+  }
+}
+
+async function submitNewUser(e) {
+  e.preventDefault();
+  const f = e.target;
+  const body = {
+    email:    f.querySelector('[name=email]').value,
+    password: f.querySelector('[name=password]').value,
+    name:     f.querySelector('[name=name]').value || undefined,
+    phone:    f.querySelector('[name=phone]').value || undefined,
+    role:     f.querySelector('[name=role]').value,
+  };
+  const res = await Auth.apiFetch('/api/admin/users', { method:'POST', body: JSON.stringify(body) });
+  const data = await res.json();
+  showToast(res.ok ? 'Usuario creado' : (data.error || 'Error al crear'), res.ok);
+  if (res.ok) { closeModal('newUserModal'); f.reset(); loadAdminUsers(); }
+}
+
+let editingUserId = null;
+
+function openUserPermissionsModal(id) {
+  editingUserId = id;
+  const modal = document.getElementById('userPermissionsModal');
+  if (!modal) return;
+  openModal('userPermissionsModal');
+}
+
+async function submitUserPermissions(e) {
+  e.preventDefault();
+  if (!editingUserId) return;
+  const f = e.target;
+  const permissions = {
+    change_order_status: f.querySelector('[name=change_order_status]').checked,
+    change_stock:        f.querySelector('[name=change_stock]').checked,
+    change_prices:       false,
+  };
+  const res = await Auth.apiFetch(`/api/admin/users/${editingUserId}`, {
+    method: 'PUT',
+    body: JSON.stringify({ permissions }),
+  });
+  showToast(res.ok ? 'Permisos actualizados' : 'Error', res.ok);
+  if (res.ok) { closeModal('userPermissionsModal'); loadAdminUsers(); }
+}
+
+async function toggleUserActive(id, newActive) {
+  const res = await Auth.apiFetch(`/api/admin/users/${id}`, {
+    method: 'PUT',
+    body: JSON.stringify({ active: newActive }),
+  });
+  showToast(res.ok ? (newActive ? 'Usuario activado' : 'Usuario desactivado') : 'Error', res.ok);
+  if (res.ok) loadAdminUsers();
+}
+
+async function deleteUser(id) {
+  if (!confirm('¿Eliminar este usuario? Esta acción no se puede deshacer.')) return;
+  const res = await Auth.apiFetch(`/api/admin/users/${id}`, { method: 'DELETE' });
+  showToast(res.ok ? 'Usuario eliminado' : 'Error', res.ok);
+  if (res.ok) loadAdminUsers();
+}
+
 // ── Init ──────────────────────────────────────────────────────────────────────
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -453,6 +581,12 @@ document.addEventListener('DOMContentLoaded', () => {
   if (topbarDate) topbarDate.textContent = new Date().toLocaleDateString('es-ES', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
 
   document.getElementById('logoutBtn')?.addEventListener('click', Auth.logout);
+
+  // Ocultar enlace de usuarios y botón nuevo producto si no es admin
+  if (!Auth.isAdmin()) {
+    document.getElementById('usersNavItem')?.remove();
+    document.querySelector('[data-modal="newProductModal"]')?.closest('.topbar-actions')?.remove();
+  }
 
   // Highlight active nav link
   const path = window.location.pathname;
@@ -467,6 +601,7 @@ document.addEventListener('DOMContentLoaded', () => {
   if (document.getElementById('promosTbody'))   loadAdminPromotions();
   if (document.getElementById('ordersTbody'))   loadAdminOrders();
   if (document.getElementById('statPending'))   loadDashboard();
+  if (document.getElementById('usersTbody'))    loadAdminUsers();
 
   // Product form handlers
   document.getElementById('editProductForm')?.addEventListener('submit', submitEditProduct);
@@ -481,4 +616,8 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('applyFilters')?.addEventListener('click', () => loadAdminOrders(currentOrderFilters(), 0));
   document.getElementById('ordersPrev')?.addEventListener('click', () => loadAdminOrders(currentOrderFilters(), _ordersOffset - ORDERS_LIMIT));
   document.getElementById('ordersNext')?.addEventListener('click', () => loadAdminOrders(currentOrderFilters(), _ordersOffset + ORDERS_LIMIT));
+
+  // Users form handlers
+  document.getElementById('newUserForm')?.addEventListener('submit', submitNewUser);
+  document.getElementById('userPermissionsForm')?.addEventListener('submit', submitUserPermissions);
 });

@@ -16,6 +16,7 @@ const authRoutes          = require('./src/routes/auth');
 const adminProductRoutes  = require('./src/routes/admin/products');
 const adminOrderRoutes    = require('./src/routes/admin/orders');
 const adminPromoRoutes    = require('./src/routes/admin/promotions');
+const adminUserRoutes     = require('./src/routes/admin/users');
 const userOrderRoutes     = require('./src/routes/user/orders');
 
 const app        = express();
@@ -57,12 +58,17 @@ app.use('/api/auth',             authRoutes);
 app.use('/api/admin/products',   adminProductRoutes);
 app.use('/api/admin/orders',     adminOrderRoutes);
 app.use('/api/admin/promotions', adminPromoRoutes);
+app.use('/api/admin/users',      adminUserRoutes);
 app.use('/api/user/orders',      userOrderRoutes);
 
 app.get('*', (_req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`Carnicería Artesanal — server running on port ${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Carnicería Artesanal — server running on port ${PORT}`);
+  });
+}
+
+module.exports = app;

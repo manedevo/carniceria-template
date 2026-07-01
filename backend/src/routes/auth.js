@@ -8,7 +8,7 @@ const authenticate = require('../middleware/authenticate');
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10,
+  max: process.env.NODE_ENV === 'test' ? 1000 : 10,
   message: { error: 'Demasiados intentos. Espera 15 minutos.' },
   standardHeaders: true,
   legacyHeaders: false,

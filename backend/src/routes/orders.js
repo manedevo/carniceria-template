@@ -6,7 +6,7 @@ const rateLimit  = require('express-rate-limit');
 
 const orderLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 4,
+  max: process.env.NODE_ENV === 'test' ? 1000 : 4,
   message: { error: 'Hemos recibido varios pedidos desde tu conexión en muy poco tiempo. Por favor, espera un momento y vuelve a intentarlo — tu pedido es importante para nosotros.' },
   standardHeaders: true,
   legacyHeaders: false,

@@ -2,6 +2,7 @@
   "name": "carniceria-template-backend",
   "version": "1.0.0",
   "main": "index.js",
+  "author": "Manuel Reyes Vielma (https://maneprojects.es)",
   "scripts": {
     "start": "node index.js",
     "dev": "nodemon index.js",

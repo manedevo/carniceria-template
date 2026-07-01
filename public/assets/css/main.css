@@ -740,6 +740,18 @@ img { max-width: 100%; display: block; }
   border-top: 1px solid #222;
 }
 
+.footer-credit {
+  margin-top: 0.4rem;
+  font-size: 0.62rem;
+  letter-spacing: 1px;
+  font-weight: 400;
+}
+
+.footer-credit a {
+  color: rgba(255,255,255,0.45);
+  text-decoration: underline;
+}
+
 /* ── Promo banner / badges ───────────────────────────────────────────────── */
 .promo-banner {
   display: none;

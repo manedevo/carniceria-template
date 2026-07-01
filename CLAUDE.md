@@ -27,14 +27,16 @@ backend/
     middleware/
       authenticate.js       ← verifica Bearer JWT → req.user
       requireRole.js        ← RBAC, acepta lista variádica de roles
+      hasPermission.js      ← permiso granular por usuario (rol ventas); admin siempre pasa
     routes/
       products.js           ← GET /api/products (público + promo data)
       orders.js             ← POST /api/orders (público, user_id opcional)
       auth.js               ← /register /login /me
       admin/
-        products.js         ← CRUD, solo admin
-        orders.js           ← GET todos, PUT status solo admin; GET permitido admin+ventas
+        products.js         ← CRUD admin+ventas (ventas no puede cambiar price); DELETE solo admin
+        orders.js           ← GET todos admin+ventas; PUT status admin o ventas con permiso change_order_status
         promotions.js       ← CRUD con transacción, solo admin
+        users.js            ← CRUD usuarios + rol/permissions, solo admin
       user/
         orders.js           ← historial cliente, solo role=cliente
 
@@ -43,7 +45,7 @@ public/
   login.html / registro.html / mi-cuenta.html
   admin/
     index.html              ← dashboard (stat cards + recent orders)
-    productos.html / pedidos.html / promociones.html
+    productos.html / pedidos.html / promociones.html / usuarios.html
   assets/js/
     auth.js                 ← JWT helpers: getUser, apiFetch, requireAuth, updateAuthNav
     main.js                 ← storefront: cart Map, debounced search, promo render, escHtml
@@ -59,9 +61,9 @@ public/
 
 ## Schema DB (orden de creación — respetar FK)
 
-1. `users` — id, email, password_hash, role ENUM(admin|ventas|cliente), name, phone, active
+1. `users` — id, email, password_hash, role ENUM(admin|ventas|cliente), name, phone, active, permissions JSON (nullable — permisos granulares para role=ventas)
 2. `products` — id, name, category, price, unit_type ENUM(kg|pieza), stock_qty, stock_enabled, note, image_url, active
-3. `orders` — id, **user_id FK→users NULL**, customer_name, phone, address, zone, time_slot, payment_method, items JSON, total, status ENUM(pendiente|confirmado|preparando|en camino|entregado|cancelado)
+3. `orders` — id, **user_id FK→users NULL**, customer_name, phone, address, zone, time_slot, payment_method, items JSON, total, status ENUM(pendiente|confirmado|en camino|entregado|cancelado)
 4. `promotions` — id, name, type ENUM(porcentaje|precio_fijo), value, applies_to ENUM(todos|categoria|producto), category, active, starts_at, ends_at
 5. `promotion_products` — (promotion_id FK, product_id FK), composite PK, CASCADE DELETE
 
@@ -76,11 +78,14 @@ public/
 | POST | `/api/auth/register` | — | público |
 | POST | `/api/auth/login` | — | público |
 | GET | `/api/auth/me` | JWT | cualquiera |
-| GET/POST/PUT/DELETE | `/api/admin/products` | JWT | admin |
-| PATCH | `/api/admin/products/:id/stock` | JWT | admin |
+| GET | `/api/admin/products` | JWT | admin, ventas |
+| POST/DELETE | `/api/admin/products` | JWT | admin |
+| PUT | `/api/admin/products/:id` | JWT | admin, ventas (sin cambiar `price`) |
+| PATCH | `/api/admin/products/:id/stock` | JWT | admin, ventas con permiso `change_stock` |
 | GET | `/api/admin/orders` | JWT | admin, ventas |
-| PUT | `/api/admin/orders/:id/status` | JWT | admin |
+| PUT | `/api/admin/orders/:id/status` | JWT | admin, ventas con permiso `change_order_status` |
 | GET/POST/PUT/DELETE | `/api/admin/promotions` | JWT | admin |
+| GET/POST/PUT/DELETE | `/api/admin/users` | JWT | admin |
 | GET | `/api/user/orders` | JWT | cliente |
 
 ---
@@ -94,6 +99,8 @@ public/
 - **Auth.apiFetch()**: redirige a /login.html en 401 automáticamente
 - **loadDashboard()** en admin.js: role-aware — ventas solo ve stats de pedidos, admin ve todo
 - **Transacción** en admin/promotions.js POST: `conn.beginTransaction()` para promo + promotion_products
+- **hasPermission(permission)** en admin/products.js y admin/orders.js: si `role !== 'admin'`, lee `req.user.permissions` (o defaults `{change_order_status:true, change_stock:true, change_prices:false}` si es NULL) y exige `perms[permission] === true`
+- **admin/users.js**: un admin no puede cambiar su propio rol ni borrar su propia cuenta (chequeo `targetId === req.user.id`); borrado de usuario es físico (hard delete), pedidos existentes quedan con `user_id = NULL` (`ON DELETE SET NULL`)
 - **CSP estricta activa** (`script-src 'self'`, `style-src 'self' + fonts`, sin `unsafe-inline`): nunca añadir `style=""`, `onclick=` ni `<script>` inline en HTML. Scripts a archivos `.js` externos; eventos admin via `data-action`/`data-id` + listener delegado (ver `admin.js`); estilos a `.css`; `backgroundImage` dinámica via CSSOM (`el.style.backgroundImage = ...`), no interpolada en template strings
 
 ---

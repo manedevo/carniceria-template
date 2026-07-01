@@ -258,6 +258,12 @@ Mismo patrón que `loginLimiter` en `auth.js` — `express-rate-limit` ya estaba
 
 ---
 
+## 2026 — Suite de tests de integración (commit `fe4235e`)
+
+Añadida infraestructura de tests con Vitest + Supertest (`backend/tests/`, `backend/vitest.config.mjs`), cubriendo auth, RBAC de productos/pedidos/usuarios y el dashboard. Elimina el ítem correspondiente del backlog de mejoras a largo plazo (era "Suite de tests — Alto, desde cero").
+
+---
+
 ## Mejoras a largo plazo (backlog)
 
 Todos los hallazgos críticos y quick wins del audit han sido aplicados. Lo que sigue son mejoras arquitectónicas que requieren mayor esfuerzo o decisiones de diseño:
@@ -269,6 +275,5 @@ Todos los hallazgos críticos y quick wins del audit han sido aplicados. Lo que 
 | V-07 | 🟡 MEDIO | Decremento atómico de stock al crear pedido (`UPDATE ... WHERE stock_qty >= ?`) | Medio — requiere lógica transaccional en `orders.js` |
 | V-11 | 🟡 MEDIO | Logger estructurado (pino/winston) con sanitización de PII — sustituye `console.error` | Medio — afecta todos los route handlers |
 | — | 🔵 | Revocación de JWT — blocklist en Redis o tokens de corta duración + refresh token | Alto — requiere nueva infraestructura |
-| — | 🔵 | Suite de tests (vitest + supertest) para endpoints críticos | Alto — desde cero |
 | — | 🔵 | Versionado de API (`/api/v1/`) | Medio — breaking change coordinado |
 | — | 🔵 | GDPR básico — endpoint de exportación/borrado de datos de usuario | Medio |

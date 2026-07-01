@@ -3,3 +3,8 @@ node_modules/
 tasks/
 docs/referencia-funcionalidad-completa.md
 reports/
+
+# Despliegue: solo se soporta Linux/Unix (Debian/Ubuntu) — sin instalación/limpieza para Windows
+deployment/Vm_tests/windows/
+*.bat
+*.ps1

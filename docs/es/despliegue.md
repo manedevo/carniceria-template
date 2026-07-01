@@ -80,24 +80,7 @@ El script es idempotente: ejecutarlo de nuevo en una instalación existente desc
 
 ## Opción C — VM con Vagrant (pruebas locales)
 
-¿Sin Docker? ¿Sin VPS? Levanta una VM Ubuntu local.
-
-### Windows (sin requisitos previos)
-
-Haz doble-click en `deployment/Vm_tests/windows/launch.bat`. El lanzador:
-
-1. Solicita privilegios de administrador automáticamente (prompt UAC)
-2. Instala **Chocolatey** (gestor de paquetes de Windows) si no está presente
-3. Detecta VMware Workstation — o instala **VirtualBox** si no hay hipervisor
-4. Instala **Vagrant** si no está presente
-5. Instala el plugin `vagrant-vmware-desktop` si se detectó VMware
-6. Ejecuta `vagrant up` con el provider correcto
-
-Sin pasos manuales. Sin software previo necesario.
-
-### Linux / macOS
-
-Con Vagrant ya instalado:
+¿Sin Docker? ¿Sin VPS? Levanta una VM Ubuntu local. Solo Linux/macOS — con Vagrant ya instalado:
 
 ```bash
 cd deployment/Vm_tests
@@ -123,8 +106,6 @@ La app está disponible en `http://localhost:8080` desde tu máquina anfitriona.
 > **Forzar un provider manualmente** (opcional):
 > ```bash
 > VAGRANT_DEFAULT_PROVIDER=virtualbox vagrant up
-> # o en Windows PowerShell:
-> $env:VAGRANT_DEFAULT_PROVIDER="virtualbox"; vagrant up
 > ```
 
 ---

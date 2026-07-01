@@ -56,15 +56,17 @@ carniceria-template/
 │       │   └── database.js         Pool de conexiones mysql2
 │       ├── middleware/
 │       │   ├── authenticate.js     Middleware de verificación JWT
-│       │   └── requireRole.js      Middleware de control de roles RBAC
+│       │   ├── requireRole.js      Middleware de control de roles RBAC
+│       │   └── hasPermission.js    Comprobación de permisos granulares por usuario (rol ventas)
 │       └── routes/
 │           ├── products.js         GET /api/products (público, incluye datos de promo)
 │           ├── orders.js           POST /api/orders (público, vincula user_id si hay sesión)
 │           ├── auth.js             POST /register, /login · GET /me
 │           ├── admin/
-│           │   ├── products.js     CRUD completo — solo admin
-│           │   ├── orders.js       Todos los pedidos — admin + ventas
-│           │   └── promotions.js   Gestión de promociones — solo admin
+│           │   ├── products.js     CRUD — admin + ventas (cambio de precio solo admin)
+│           │   ├── orders.js       Todos los pedidos — admin + ventas; cambio de estado sujeto a permiso
+│           │   ├── promotions.js   Gestión de promociones — solo admin
+│           │   └── users.js        Gestión de usuarios (CRUD + rol/permisos) — solo admin
 │           └── user/
 │               └── orders.js       Historial del cliente — solo cliente autenticado
 ├── public/                         Servido como estáticos por Express
@@ -76,7 +78,8 @@ carniceria-template/
 │   │   ├── index.html              Dashboard (estadísticas + últimos pedidos)
 │   │   ├── productos.html          Tabla de productos con edición inline
 │   │   ├── pedidos.html            Lista de pedidos con filtros y selector de estado
-│   │   └── promociones.html        Creador de promociones
+│   │   ├── promociones.html        Creador de promociones
+│   │   └── usuarios.html           Gestión de usuarios (roles + permisos granulares)
 │   └── assets/
 │       ├── css/
 │       │   ├── main.css            Estilos de la tienda
@@ -86,13 +89,19 @@ carniceria-template/
 │       │   ├── auth.js             Helpers JWT (localStorage, apiFetch, requireAuth)
 │       │   └── admin.js            Lógica del panel admin (todas las páginas)
 │       └── img_realistas/          Imágenes de productos
+├── backend/tests/                  Tests de integración con Vitest + Supertest
+│   ├── auth.test.js
+│   ├── admin-products.test.js
+│   ├── admin-orders.test.js
+│   ├── admin-users.test.js
+│   ├── roles.test.js
+│   ├── dashboard.test.js
+│   └── orders.test.js
+├── backend/vitest.config.mjs
 ├── deployment/
 │   ├── setup/setup_sh/setup.sh     Instalador automatizado para VPS Linux
 │   └── Vm_tests/
-│       ├── Vagrantfile             VM de pruebas local (detecta VirtualBox / VMware)
-│       └── windows/
-│           ├── launch.bat          Lanzador con doble-click para Windows (sin requisitos)
-│           └── launch.ps1          Lógica PowerShell (instala todo automáticamente)
+│       └── Vagrantfile             VM de pruebas local, Linux/macOS (detecta VirtualBox / VMware)
 ├── docs/                           Documentación en inglés
 │   ├── architecture.md
 │   └── deployment.md
@@ -147,11 +156,7 @@ Luego inicia sesión en [http://localhost:3000/login.html](http://localhost:3000
 
 ## Inicio rápido (Vagrant — VM local)
 
-¿Sin Docker? Levanta una VM Ubuntu completa.
-
-**En Windows** — haz doble-click en `deployment/Vm_tests/windows/launch.bat`. Instala todo desde cero y arranca la VM. Sin requisitos previos.
-
-**En Linux / macOS** — con Vagrant ya instalado:
+¿Sin Docker? Levanta una VM Ubuntu completa. Solo Linux/macOS — con Vagrant ya instalado:
 
 ```bash
 cd deployment/Vm_tests
@@ -203,20 +208,26 @@ Copia `.env.example` a `.env` y ajusta los valores:
 
 ### Endpoints admin — requieren `Authorization: Bearer <token>`
 
-| Método | Endpoint                          | Roles             |
-|--------|-----------------------------------|-------------------|
-| GET    | `/api/admin/products`             | admin             |
-| POST   | `/api/admin/products`             | admin             |
-| PUT    | `/api/admin/products/:id`         | admin             |
-| DELETE | `/api/admin/products/:id`         | admin             |
-| PATCH  | `/api/admin/products/:id/stock`   | admin             |
-| GET    | `/api/admin/orders`               | admin, ventas   |
-| GET    | `/api/admin/orders/:id`           | admin, ventas   |
-| PUT    | `/api/admin/orders/:id/status`    | admin             |
-| GET    | `/api/admin/promotions`           | admin             |
-| POST   | `/api/admin/promotions`           | admin             |
-| PUT    | `/api/admin/promotions/:id`       | admin             |
-| DELETE | `/api/admin/promotions/:id`       | admin             |
+| Método | Endpoint                          | Roles                                                        |
+|--------|-----------------------------------|----------------------------------------------------------------|
+| GET    | `/api/admin/products`             | admin, ventas                                                   |
+| POST   | `/api/admin/products`             | admin                                                           |
+| PUT    | `/api/admin/products/:id`         | admin, ventas (ventas no puede cambiar `price`)                 |
+| DELETE | `/api/admin/products/:id`         | admin                                                           |
+| PATCH  | `/api/admin/products/:id/stock`   | admin, ventas con permiso `change_stock`                        |
+| GET    | `/api/admin/orders`               | admin, ventas                                                   |
+| GET    | `/api/admin/orders/:id`           | admin, ventas                                                   |
+| PUT    | `/api/admin/orders/:id/status`    | admin, ventas con permiso `change_order_status`                 |
+| GET    | `/api/admin/promotions`           | admin                                                           |
+| POST   | `/api/admin/promotions`           | admin                                                           |
+| PUT    | `/api/admin/promotions/:id`       | admin                                                           |
+| DELETE | `/api/admin/promotions/:id`       | admin                                                           |
+| GET    | `/api/admin/users`                | admin                                                           |
+| POST   | `/api/admin/users`                | admin — crea un usuario de cualquier rol                        |
+| PUT    | `/api/admin/users/:id`            | admin — actualiza nombre/teléfono/rol/activo/permisos (no su propio rol) |
+| DELETE | `/api/admin/users/:id`            | admin — borrado físico (no su propia cuenta); pedidos quedan con `user_id = NULL` |
+
+**Permisos granulares para `ventas`:** cada usuario `ventas` tiene una columna JSON opcional `permissions` (`change_order_status`, `change_stock`, `change_prices`). Si no está definida, los valores por defecto son `change_order_status: true, change_stock: true, change_prices: false`. `admin` siempre evita esta comprobación.
 
 ### Endpoints de cliente — requieren JWT con rol `cliente`
 
@@ -229,15 +240,19 @@ Copia `.env.example` a `.env` y ajusta los valores:
 
 ## Matriz de roles (RBAC)
 
-| Funcionalidad                       | admin | ventas | cliente | anónimo |
-|-------------------------------------|-------|----------|---------|---------|
-| Navegar catálogo / añadir al carrito | ✓     | ✓        | ✓       | ✓       |
-| Realizar un pedido                  | ✓     | ✓        | ✓       | ✓       |
-| Ver historial propio                | ✓     | ✓        | ✓       | —       |
-| Ver todos los pedidos               | ✓     | ✓        | —       | —       |
-| Cambiar estado de pedido            | ✓     | —        | —       | —       |
-| Gestionar productos / stock         | ✓     | —        | —       | —       |
-| Gestionar promociones               | ✓     | —        | —       | —       |
+| Funcionalidad                          | admin | ventas                      | cliente | anónimo |
+|-----------------------------------------|-------|-----------------------------|---------|---------|
+| Navegar catálogo / añadir al carrito     | ✓     | ✓                           | ✓       | ✓       |
+| Realizar un pedido                      | ✓     | ✓                           | ✓       | ✓       |
+| Ver historial propio                    | —     | —                           | ✓       | —       |
+| Ver todos los pedidos                   | ✓     | ✓                           | —       | —       |
+| Cambiar estado de pedido                | ✓     | si tiene `change_order_status` | —    | —       |
+| Gestionar productos (nombre/categoría/etc.) | ✓ | ✓ (no `price`)             | —       | —       |
+| Gestionar stock                         | ✓     | si tiene `change_stock`     | —       | —       |
+| Gestionar promociones                   | ✓     | —                           | —       | —       |
+| Gestionar usuarios                      | ✓     | —                           | —       | —       |
+
+Los permisos de `ventas` (`change_order_status`, `change_stock`, `change_prices`) son por usuario y los asigna un admin desde el panel "Usuarios". Valores por defecto si no se definen: los dos primeros en `true`, `change_prices` en `false` (y el cambio de precio está bloqueado siempre, ver referencia de la API arriba).
 
 ---
 
@@ -274,6 +289,25 @@ Consulta [docs/es/despliegue.md](docs/es/despliegue.md) para:
 
 ---
 
+## Ejecutar los tests
+
+Los tests de integración (Vitest + Supertest) cubren auth, RBAC, productos/pedidos/usuarios admin y el dashboard.
+
+```bash
+cd backend
+npm test          # ejecución única
+npm run test:watch
+```
+
+---
+
+## Autor
+
+**Manuel Reyes Vielma**
+Desarrollador full-stack — [GitHub](https://github.com/manedevo) · [LinkedIn](https://linkedin.com/in/manedevo) · [maneprojects.es](https://maneprojects.es)
+
+---
+
 ## Licencia
 
-MIT — úsalo como quieras. Un enlace de vuelta es bienvenido pero no obligatorio.
+MIT — úsalo como quieras. Consulta [LICENSE](LICENSE) para el texto completo (incluye una petición de cortesía de avisar sobre mejoras significativas, no una condición legal de uso).

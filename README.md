@@ -58,15 +58,17 @@ carniceria-template/
 │       │   └── database.js         mysql2 connection pool
 │       ├── middleware/
 │       │   ├── authenticate.js     JWT verification middleware
-│       │   └── requireRole.js      RBAC role-check middleware
+│       │   ├── requireRole.js      RBAC role-check middleware
+│       │   └── hasPermission.js    Granular per-user permission check (ventas role)
 │       └── routes/
 │           ├── products.js         GET /api/products (public, includes promo data)
 │           ├── orders.js           POST /api/orders (public, links user_id if logged in)
 │           ├── auth.js             POST /register, /login · GET /me
 │           ├── admin/
-│           │   ├── products.js     Full CRUD — admin only
-│           │   ├── orders.js       All orders — admin + ventas; status update admin only
-│           │   └── promotions.js   Promotion management — admin only
+│           │   ├── products.js     CRUD — admin + ventas (price changes admin-only)
+│           │   ├── orders.js       All orders — admin + ventas; status update gated by permission
+│           │   ├── promotions.js   Promotion management — admin only
+│           │   └── users.js        User management (CRUD + role/permissions) — admin only
 │           └── user/
 │               └── orders.js       Customer's own order history — cliente only
 ├── public/                         Served as static files by Express
@@ -78,7 +80,8 @@ carniceria-template/
 │   │   ├── index.html              Dashboard (stats + recent orders)
 │   │   ├── productos.html          Product table with inline editing
 │   │   ├── pedidos.html            Order list with filters and status selector
-│   │   └── promociones.html        Promotion creator
+│   │   ├── promociones.html        Promotion creator
+│   │   └── usuarios.html           User management (roles + granular permissions)
 │   └── assets/
 │       ├── css/
 │       │   ├── main.css            Storefront styles
@@ -88,13 +91,19 @@ carniceria-template/
 │       │   ├── auth.js             JWT helpers (localStorage, apiFetch, requireAuth)
 │       │   └── admin.js            Admin panel logic (all pages)
 │       └── img_realistas/          Product images
+├── backend/tests/                  Vitest + Supertest integration tests
+│   ├── auth.test.js
+│   ├── admin-products.test.js
+│   ├── admin-orders.test.js
+│   ├── admin-users.test.js
+│   ├── roles.test.js
+│   ├── dashboard.test.js
+│   └── orders.test.js
+├── backend/vitest.config.mjs
 ├── deployment/
 │   ├── setup/setup_sh/setup.sh     Automated Linux installer (VPS)
 │   └── Vm_tests/
-│       ├── Vagrantfile             Local test VM (auto-detects VirtualBox / VMware)
-│       └── windows/
-│           ├── launch.bat          Double-click launcher for Windows (no prerequisites)
-│           └── launch.ps1          PowerShell setup logic (installs everything)
+│       └── Vagrantfile             Local test VM, Linux/macOS (auto-detects VirtualBox / VMware)
 ├── docs/                           English documentation
 │   ├── architecture.md
 │   └── deployment.md
@@ -149,11 +158,7 @@ Then log in at [http://localhost:3000/login.html](http://localhost:3000/login.ht
 
 ## Quick start (Vagrant — local VM)
 
-No Docker on your machine? Spin up a full Ubuntu VM.
-
-**On Windows** — double-click `deployment/Vm_tests/windows/launch.bat`. It installs everything from scratch (Chocolatey, VirtualBox or detects VMware, Vagrant, plugins) and starts the VM. No prerequisites needed.
-
-**On Linux / macOS** — with Vagrant already installed:
+No Docker on your machine? Spin up a full Ubuntu VM. Linux/macOS only — with Vagrant already installed:
 
 ```bash
 cd deployment/Vm_tests
@@ -205,20 +210,26 @@ Copy `.env.example` to `.env` and adjust:
 
 ### Admin endpoints — require `Authorization: Bearer <token>`
 
-| Method | Endpoint                          | Roles              |
-|--------|-----------------------------------|--------------------|
-| GET    | `/api/admin/products`             | admin              |
-| POST   | `/api/admin/products`             | admin              |
-| PUT    | `/api/admin/products/:id`         | admin              |
-| DELETE | `/api/admin/products/:id`         | admin              |
-| PATCH  | `/api/admin/products/:id/stock`   | admin              |
-| GET    | `/api/admin/orders`               | admin, ventas    |
-| GET    | `/api/admin/orders/:id`           | admin, ventas    |
-| PUT    | `/api/admin/orders/:id/status`    | admin              |
-| GET    | `/api/admin/promotions`           | admin              |
-| POST   | `/api/admin/promotions`           | admin              |
-| PUT    | `/api/admin/promotions/:id`       | admin              |
-| DELETE | `/api/admin/promotions/:id`       | admin              |
+| Method | Endpoint                          | Roles                                                    |
+|--------|-----------------------------------|-----------------------------------------------------------|
+| GET    | `/api/admin/products`             | admin, ventas                                              |
+| POST   | `/api/admin/products`             | admin                                                       |
+| PUT    | `/api/admin/products/:id`         | admin, ventas (ventas cannot change `price`)                |
+| DELETE | `/api/admin/products/:id`         | admin                                                       |
+| PATCH  | `/api/admin/products/:id/stock`   | admin, ventas with `change_stock` permission                |
+| GET    | `/api/admin/orders`               | admin, ventas                                               |
+| GET    | `/api/admin/orders/:id`           | admin, ventas                                               |
+| PUT    | `/api/admin/orders/:id/status`    | admin, ventas with `change_order_status` permission         |
+| GET    | `/api/admin/promotions`           | admin                                                       |
+| POST   | `/api/admin/promotions`           | admin                                                       |
+| PUT    | `/api/admin/promotions/:id`       | admin                                                       |
+| DELETE | `/api/admin/promotions/:id`       | admin                                                       |
+| GET    | `/api/admin/users`                | admin                                                       |
+| POST   | `/api/admin/users`                | admin — create a user of any role                           |
+| PUT    | `/api/admin/users/:id`            | admin — update name/phone/role/active/permissions (not own role) |
+| DELETE | `/api/admin/users/:id`            | admin — hard delete (not own account); orders keep `user_id = NULL` |
+
+**Granular permissions for `ventas`:** each `ventas` user has an optional `permissions` JSON column (`change_order_status`, `change_stock`, `change_prices`). If unset, defaults are `change_order_status: true, change_stock: true, change_prices: false`. `admin` always bypasses this check.
 
 ### Customer endpoints — require JWT with role `cliente`
 
@@ -231,15 +242,19 @@ Copy `.env.example` to `.env` and adjust:
 
 ## Role matrix (RBAC)
 
-| Feature                          | admin | ventas | cliente | anonymous |
-|----------------------------------|-------|----------|---------|-----------|
-| Browse catalogue / add to cart   | ✓     | ✓        | ✓       | ✓         |
-| Place an order                   | ✓     | ✓        | ✓       | ✓         |
-| View own order history           | ✓     | ✓        | ✓       | —         |
-| View all orders                  | ✓     | ✓        | —       | —         |
-| Change order status              | ✓     | —        | —       | —         |
-| Manage products / stock          | ✓     | —        | —       | —         |
-| Manage promotions                | ✓     | —        | —       | —         |
+| Feature                          | admin | ventas                     | cliente | anonymous |
+|----------------------------------|-------|----------------------------|---------|-----------|
+| Browse catalogue / add to cart   | ✓     | ✓                          | ✓       | ✓         |
+| Place an order                   | ✓     | ✓                          | ✓       | ✓         |
+| View own order history           | —     | —                          | ✓       | —         |
+| View all orders                  | ✓     | ✓                          | —       | —         |
+| Change order status              | ✓     | if `change_order_status`   | —       | —         |
+| Manage products (name/category/etc.) | ✓ | ✓ (not `price`)          | —       | —         |
+| Manage stock                     | ✓     | if `change_stock`          | —       | —         |
+| Manage promotions                | ✓     | —                          | —       | —         |
+| Manage users                     | ✓     | —                          | —       | —         |
+
+`ventas` permissions (`change_order_status`, `change_stock`, `change_prices`) are per-user, set by an admin from the "Usuarios" panel. Defaults when unset: the first two `true`, `change_prices` `false` (and price changes are hard-blocked regardless — see API reference above).
 
 ---
 
@@ -276,6 +291,25 @@ See [docs/deployment.md](docs/deployment.md) for:
 
 ---
 
+## Running tests
+
+Integration tests (Vitest + Supertest) cover auth, RBAC, admin products/orders/users, and the dashboard.
+
+```bash
+cd backend
+npm test          # single run
+npm run test:watch
+```
+
+---
+
+## Author
+
+**Manuel Reyes Vielma**
+Full-stack developer — [GitHub](https://github.com/manedevo) · [LinkedIn](https://linkedin.com/in/manedevo) · [maneprojects.es](https://maneprojects.es)
+
+---
+
 ## License
 
-MIT — do whatever you want with it. A link back is appreciated but not required.
+MIT — do whatever you want with it. See [LICENSE](LICENSE) for the full text (includes a courtesy request to be notified of significant improvements, not a legal condition of use).

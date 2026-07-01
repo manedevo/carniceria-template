@@ -15,6 +15,7 @@ CREATE TABLE IF NOT EXISTS users (
   name          VARCHAR(120) NOT NULL,
   phone         VARCHAR(30)  DEFAULT NULL,
   active        TINYINT(1)   NOT NULL DEFAULT 1,
+  permissions   JSON         DEFAULT NULL,
   created_at    TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
